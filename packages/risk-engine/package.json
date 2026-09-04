@@ -1,0 +1,16 @@
+{
+  "name": "@deepaudit/risk-engine",
+  "version": "1.0.0",
+  "description": "Deterministic Fraud and Risk Scoring Engine for DeepAudit AI",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@deepaudit/shared-types": "*"
+  },
+  "devDependencies": {
+    "typescript": "~5.7.2"
+  }
+}

@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Additional Global Styles */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: #f8fafc; /* bg-slate-50 */
+  color: #0f172a; /* text-slate-900 */
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1; /* slate-300 */
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8; /* slate-400 */
+}
+
+/* ECharts Container styling */
+.chart-container {
+  width: 100%;
+  height: 350px;
+}
+
+/* Map Container styling */
+.map-container {
+  width: 100%;
+  height: 500px;
+  border-radius: 0.5rem;
+}
+
+/* Accessibility: Large Text Mode */
+.large-text {
+  font-size: 1.08rem;
+}
+.large-text p,
+.large-text span,
+.large-text button,
+.large-text input,
+.large-text td,
+.large-text th {
+  font-size: 1.06em !important;
+}
+

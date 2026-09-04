@@ -1,0 +1,14 @@
+{
+  "name": "@deepaudit/web",
+  "version": "1.0.0",
+  "description": "DeepAudit AI Angular Frontend",
+  "private": true,
+  "scripts": {
+    "start": "ng serve",
+    "build": "ng build"
+  },
+  "dependencies": {
+    "@deepaudit/shared-types": "*",
+    "@deepaudit/language": "*"
+  }
+}

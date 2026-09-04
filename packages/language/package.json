@@ -1,0 +1,16 @@
+{
+  "name": "@deepaudit/language",
+  "version": "1.0.0",
+  "description": "Provider-independent 22 Scheduled Indian Language Registry for DeepAudit AI",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@deepaudit/shared-types": "*"
+  },
+  "devDependencies": {
+    "typescript": "~5.7.2"
+  }
+}

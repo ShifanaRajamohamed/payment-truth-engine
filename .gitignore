@@ -51,3 +51,25 @@ testem.log
 Thumbs.db
 *.swp
 *.swo
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Build output
+dist/
+**/dist/
+
+# Angular cache
+.angular/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*

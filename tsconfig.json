@@ -16,7 +16,15 @@
     "moduleResolution": "bundler",
     "importHelpers": true,
     "target": "ES2022",
-    "module": "ES2022"
+    "module": "ES2022",
+    "baseUrl": ".",
+    "paths": {
+      "@deepaudit/shared-types": ["packages/shared-types/src/index.ts"],
+      "@deepaudit/language": ["packages/language/src/index.ts"],
+      "@deepaudit/risk-engine": ["packages/risk-engine/src/index.ts"],
+      "@deepaudit/voice": ["packages/voice/src/index.ts"],
+      "@deepaudit/ai-agent": ["packages/ai-agent/src/index.ts"]
+    }
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,

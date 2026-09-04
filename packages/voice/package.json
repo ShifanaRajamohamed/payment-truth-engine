@@ -1,0 +1,17 @@
+{
+  "name": "@deepaudit/voice",
+  "version": "1.0.0",
+  "description": "Sarvam and Voice Provider Abstraction for DeepAudit AI",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@deepaudit/shared-types": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "~5.7.2"
+  }
+}

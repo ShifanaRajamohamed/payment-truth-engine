@@ -1,0 +1,13 @@
+{
+  "name": "@deepaudit/shared-types",
+  "version": "1.0.0",
+  "description": "Shared TypeScript interfaces and types for DeepAudit AI",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "~5.7.2"
+  }
+}

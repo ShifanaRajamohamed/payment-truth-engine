@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@deepaudit/shared-types": ["../../packages/shared-types/dist"],
+      "@deepaudit/risk-engine": ["../../packages/risk-engine/dist"],
+      "@deepaudit/ai-agent": ["../../packages/ai-agent/dist"],
+      "@deepaudit/voice": ["../../packages/voice/dist"],
+      "@deepaudit/language": ["../../packages/language/dist"]
+    }
+  },
+  "include": ["src/**/*"]
+}

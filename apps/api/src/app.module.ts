@@ -10,6 +10,7 @@ import { VoiceController } from './modules/voice/voice.controller';
 import { LanguageController } from './modules/language/language.controller';
 import { AuthorizationController } from './modules/authorization/authorization.controller';
 import { AuditController } from './modules/audit/audit.controller';
+import { TruthController } from './modules/truth/truth.controller';
 
 export function createApp(): Express {
   const app = express();
@@ -21,7 +22,7 @@ export function createApp(): Express {
   app.use(requestLogger);
 
   // Health check
-  app.get('/health', (req, res) => res.json({ status: 'ok', service: 'DeepAudit AI API', timestamp: new Date().toISOString() }));
+  app.get('/health', (req, res) => res.json({ status: 'ok', service: 'Payment Truth AI API', timestamp: new Date().toISOString() }));
 
   // Controllers
   const authCtrl = new AuthController();
@@ -32,10 +33,11 @@ export function createApp(): Express {
   const langCtrl = new LanguageController();
   const authzCtrl = new AuthorizationController();
   const auditCtrl = new AuditController();
+  const truthCtrl = new TruthController();
 
   const api = express.Router();
 
-  // Auth routes
+  // Public / Auth routes
   api.post('/auth/login', authCtrl.login);
   api.get('/auth/passkey-challenge', authCtrl.getPasskeyChallenge);
 
@@ -43,8 +45,21 @@ export function createApp(): Express {
   api.get('/languages', langCtrl.getAll);
   api.get('/languages/:code', langCtrl.getByCode);
 
-  // Protected routes (guarded)
-  api.use(authGuard);
+  // Payment Truth AI Incident & Resolver routes (Direct & Unobstructed for hackathon demo)
+  api.get('/incidents', truthCtrl.getAllIncidents);
+  api.get('/incidents/:id', truthCtrl.getIncidentById);
+  api.post('/incidents/investigate', truthCtrl.investigate);
+  api.post('/incidents/:id/verify', truthCtrl.verify);
+  api.post('/incidents/:id/repair', truthCtrl.repair);
+  api.post('/incidents/simulate/:scenarioId', truthCtrl.simulateScenario);
+
+  api.get('/truth/lookup', truthCtrl.lookupCrossSystem);
+  api.get('/truth/metrics', truthCtrl.getMetrics);
+  api.get('/truth/audit', truthCtrl.getAuditLogs);
+
+  // Voice (Sarvam) routes
+  api.post('/voice/stt', voiceCtrl.speechToText);
+  api.post('/voice/tts', voiceCtrl.textToSpeech);
 
   // Payments routes
   api.get('/payments', paymentsCtrl.getAll);
@@ -58,10 +73,6 @@ export function createApp(): Express {
   // Agent (Gemini) routes
   api.post('/agent/query', agentCtrl.query);
   api.post('/agent/explain-risk', agentCtrl.explainRisk);
-
-  // Voice (Sarvam) routes
-  api.post('/voice/stt', voiceCtrl.speechToText);
-  api.post('/voice/tts', voiceCtrl.textToSpeech);
 
   // Authorization routes
   api.post('/authz/step-up', authzCtrl.verifyStepUp);

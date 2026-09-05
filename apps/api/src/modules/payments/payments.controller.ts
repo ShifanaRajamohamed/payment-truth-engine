@@ -6,7 +6,7 @@ export class PaymentsController {
   private paymentsService = PaymentsService.getInstance();
 
   getAll = (req: Request, res: Response) => {
-    const { status, method, query } = req.query;
+    const status = req.query.status as string; const method = req.query.method as string; const query = req.query.query as string;
     const payments = this.paymentsService.getPayments({
       status: status as string,
       method: method as string,
@@ -16,7 +16,7 @@ export class PaymentsController {
   };
 
   getById = (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const payment = this.paymentsService.getPaymentById(id);
     if (!payment) {
       return ApiResponse.error(res, 'Payment not found', 'NOT_FOUND', 404);

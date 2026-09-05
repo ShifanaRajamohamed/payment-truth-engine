@@ -1,148 +1,201 @@
 import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { DataService, Transaction } from '../../core/services/data.service';
-import { VoiceService } from '../../core/services/voice.service';
-import { TranslationService } from '../../core/language/translation.service';
+import { PaymentsService } from '../../core/services/payments.service';
+import { RiskService } from '../../core/services/risk.service';
+import { CreatePaymentComponent } from './create-payment/create-payment.component';
+import { RiskExplanationComponent } from '../risk/risk-explanation/risk-explanation.component';
+import { StepUpAuthComponent } from '../authorization/step-up-auth/step-up-auth.component';
+import { PaymentTruthDrawerComponent } from './payment-truth-drawer/payment-truth-drawer.component';
+import { Payment } from '@deepaudit/shared-types';
 
 @Component({
   selector: 'app-payments',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    CreatePaymentComponent,
+    RiskExplanationComponent,
+    StepUpAuthComponent,
+    PaymentTruthDrawerComponent
+  ],
   template: `
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-7">
       <div>
         <div class="flex items-center gap-2 mb-1">
-          <span class="text-lg">💳</span>
-          <h1 class="text-2xl font-bold text-slate-900 tracking-tight">My Payments</h1>
+          <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Corporate Payments Ledger</h1>
         </div>
-        <p class="text-sm text-slate-500">Track incoming customer payments, failed attempts, and bank gateways.</p>
+        <p class="text-sm text-slate-500">Real-time corporate disbursements, fraud scoring, and dual-control status.</p>
       </div>
 
       <div class="mt-4 sm:mt-0 flex items-center gap-2.5">
-        <button (click)="openSimulatorModal()"
-                class="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-xl text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-colors shadow-sm">
-          <svg class="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <button (click)="showCreateModal = true"
+                class="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl text-white shadow-sm transition-all"
+                style="background:linear-gradient(135deg,#1e3a8a,#3b82f6);">
+          <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
           </svg>
-          <span>Simulate Payment</span>
-        </button>
-
-        <button (click)="askAgent()"
-                class="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl text-white transition-all shadow-sm"
-                style="background:linear-gradient(135deg,#1e3a8a,#3b82f6);">
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3Z"/>
-          </svg>
-          <span>Ask Dhwani</span>
+          <span>Initiate Payment</span>
         </button>
       </div>
     </div>
 
     <!-- Summary KPI cards -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-      <div class="bg-white rounded-2xl p-5" style="border:1px solid rgba(15,31,69,0.07);box-shadow:0 2px 8px rgba(15,31,69,0.04);">
-        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Total Volume</p>
-        <p class="text-2xl font-extrabold text-slate-900">{{ dataService.volume() | currency:'INR':'symbol':'1.0-0' }}</p>
-        <p class="text-xs text-emerald-600 font-semibold mt-1">↑ +{{ dataService.volumeTrend() }}% this month</p>
+      <!-- 1. Total Corporate Volume (Informational) -->
+      <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Total Corporate Volume</p>
+        <p class="text-2xl font-extrabold text-slate-900 tabular-nums">{{ totalVolume | currency:'INR':'symbol':'1.0-0' }}</p>
+        <p class="text-xs text-emerald-600 font-semibold mt-1">↑ +14.2% verified this month</p>
       </div>
 
-      <div class="bg-white rounded-2xl p-5" style="border:1px solid rgba(15,31,69,0.07);box-shadow:0 2px 8px rgba(15,31,69,0.04);">
-        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Payment Success Rate</p>
-        <p class="text-2xl font-extrabold text-emerald-600">{{ dataService.successRate() }}%</p>
-        <p class="text-xs text-slate-500 mt-1">About 97 out of 100 payments succeed</p>
+      <!-- 2. Active Rail Health (Informational) -->
+      <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Active Rail Health</p>
+        <p class="text-2xl font-extrabold text-emerald-600">99.2%</p>
+        <p class="text-xs text-slate-500 mt-1">Razorpay Enterprise & Banking Rails</p>
       </div>
 
-      <div class="bg-white rounded-2xl p-5" style="border:1px solid rgba(15,31,69,0.07);box-shadow:0 2px 8px rgba(15,31,69,0.04);">
-        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Avg Settlement Time</p>
-        <p class="text-2xl font-extrabold text-slate-900">{{ dataService.settlementTime() }}</p>
-        <p class="text-xs text-slate-500 mt-1">Funds deposited to bank in under 24 hrs</p>
+      <!-- 3. Risk Hold & Step-Up (Action Required / Restrained Enterprise Style) -->
+      <div class="bg-white rounded-2xl p-5 border border-slate-100 border-l-4 border-l-amber-500 shadow-sm">
+        <div class="flex items-center justify-between mb-1">
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Risk Hold & Step-Up</p>
+          <span class="text-[9px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 uppercase tracking-wider">
+            Action Required
+          </span>
+        </div>
+        <p class="text-2xl font-extrabold text-amber-700">{{ flaggedCount }} transfers</p>
+        <p class="text-xs text-slate-500 mt-1">Awaiting Passkey biometric verification</p>
       </div>
     </div>
 
     <!-- Filter Bar -->
-    <div class="bg-white rounded-2xl p-4 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4"
-         style="border:1px solid rgba(15,31,69,0.07);box-shadow:0 2px 8px rgba(15,31,69,0.04);">
+    <div class="bg-white rounded-2xl p-4 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border border-slate-100 shadow-sm">
       <div class="flex-1 max-w-sm">
         <div class="relative">
           <svg class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
           </svg>
           <input type="text" [(ngModel)]="searchQuery"
-                 placeholder="Search by customer, ID or city…"
-                 class="w-full pl-10 pr-4 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-blue-400 bg-slate-50"/>
+                 placeholder="Search by recipient, TXN reference, city…"
+                 class="w-full pl-10 pr-4 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-indigo-400 bg-slate-50/70"/>
         </div>
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
         <select [(ngModel)]="selectedStatus" class="px-3 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl focus:outline-none">
-          <option value="all">All Statuses</option>
-          <option value="success">Successful only</option>
-          <option value="failed">Failed only</option>
-          <option value="processing">Processing</option>
+          <option value="ALL">All Statuses</option>
+          <option value="SUCCESS">Completed (Success)</option>
+          <option value="STEP_UP_REQUIRED">Step-Up Required</option>
+          <option value="PENDING_APPROVAL">Pending Approval</option>
+          <option value="PROCESSING">Processing / Desync</option>
+          <option value="FLAGGED_HIGH_RISK">Flagged High Risk</option>
         </select>
 
         <select [(ngModel)]="selectedMethod" class="px-3 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl focus:outline-none">
-          <option value="all">All Methods</option>
+          <option value="ALL">All Payment Rails</option>
+          <option value="NEFT">NEFT</option>
+          <option value="RTGS">RTGS</option>
           <option value="UPI">UPI</option>
-          <option value="Card">Card</option>
           <option value="Netbanking">Netbanking</option>
-          <option value="Wallet">Wallet</option>
         </select>
       </div>
     </div>
 
     <!-- Payments Ledger Table -->
-    <div class="bg-white rounded-2xl overflow-hidden"
-         style="border:1px solid rgba(15,31,69,0.07);box-shadow:0 2px 8px rgba(15,31,69,0.04);">
+    <div class="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm">
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-slate-100 text-left">
-          <thead class="bg-slate-50/75">
+          <thead class="bg-slate-50/80">
             <tr class="text-[10px] uppercase text-slate-500 font-bold tracking-wider">
-              <th class="py-3.5 px-5">Transaction ID</th>
-              <th class="py-3.5 px-4">Customer</th>
-              <th class="py-3.5 px-4">Amount</th>
+              <th class="py-3.5 px-5">Reference</th>
+              <th class="py-3.5 px-4">Recipient</th>
+              <th class="py-3.5 px-4 text-right">Amount</th>
               <th class="py-3.5 px-4">Method & Gateway</th>
+              <th class="py-3.5 px-4">Fraud Risk Score</th>
               <th class="py-3.5 px-4">Status</th>
-              <th class="py-3.5 px-4">Region</th>
-              <th class="py-3.5 px-4 text-right">Actions</th>
+              <th class="py-3.5 px-5 text-right">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100 text-xs">
-            <tr *ngFor="let tx of filteredTransactions" class="hover:bg-slate-50/70 transition-colors">
-              <td class="py-3.5 px-5 font-mono text-[11px] text-slate-600 font-medium">
-                {{ tx.id }}
+            <tr *ngFor="let p of filteredPayments" class="hover:bg-slate-50/70 transition-colors">
+              
+              <!-- 1. Reference (Monospace System Identifier) -->
+              <td class="py-3.5 px-5">
+                <span class="font-mono text-xs text-slate-500 font-medium tracking-tight">
+                  {{ p.referenceNumber }}
+                </span>
               </td>
+
+              <!-- 2. Recipient -->
               <td class="py-3.5 px-4">
-                <p class="font-bold text-slate-900">{{ tx.customerName }}</p>
-                <p class="text-[10px] text-slate-400">{{ tx.email }}</p>
+                <p class="font-bold text-slate-900">{{ p.beneficiary.name }}</p>
+                <p class="text-[10px] text-slate-400">{{ p.beneficiary.bankName }} ({{ p.beneficiary.category }})</p>
               </td>
+
+              <!-- 3. Amount (Strictly Right Aligned) -->
+              <td class="py-3.5 px-4 text-right">
+                <span class="font-extrabold text-sm text-slate-900 tabular-nums">
+                  {{ p.amount | currency:'INR':'symbol':'1.0-0' }}
+                </span>
+              </td>
+
+              <!-- 4. Method & Gateway -->
               <td class="py-3.5 px-4">
-                <span class="font-extrabold text-sm text-slate-900">{{ tx.amount | currency:'INR':'symbol':'1.0-0' }}</span>
+                <span class="font-semibold text-slate-800">{{ p.method }}</span>
+                <span class="text-[10px] text-slate-400 block">{{ p.gateway }}</span>
               </td>
+
+              <!-- 5. Fraud Risk Score -->
               <td class="py-3.5 px-4">
-                <span class="font-semibold text-slate-800">{{ tx.method }}</span>
-                <span class="text-[10px] text-slate-400 block">{{ tx.gateway }}</span>
+                <div class="flex items-center gap-2">
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                        [style]="riskBadgeStyle(p.riskAssessment?.level)">
+                    {{ p.riskAssessment?.overallScore || 0 }}/100 ({{ p.riskAssessment?.level || 'LOW' }})
+                  </span>
+                </div>
               </td>
+
+              <!-- 6. Status -->
               <td class="py-3.5 px-4">
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider"
-                      [style]="statusBadgeStyle(tx.status)">
-                  <span class="w-1.5 h-1.5 rounded-full" [style.background]="statusDotColor(tx.status)"></span>
-                  {{ tx.status }}
-                </span>
-                <span *ngIf="tx.failureReason" class="text-[10px] text-red-500 block mt-0.5 max-w-[140px] truncate" [title]="tx.failureReason">
-                  {{ tx.failureReason }}
+                      [style]="statusBadgeStyle(p.status)">
+                  {{ p.status.replace('_', ' ') }}
                 </span>
               </td>
-              <td class="py-3.5 px-4 text-slate-600 font-medium">
-                {{ tx.region }}
-              </td>
-              <td class="py-3.5 px-4 text-right">
-                <button (click)="explainPayment(tx)"
-                        class="px-2.5 py-1 text-[11px] font-semibold text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors">
-                  Explain 💡
+
+              <!-- 7. Actions (Context-Aware) -->
+              <td class="py-3.5 px-5 text-right">
+                
+                <!-- A. High Priority Passkey Biometric Action -->
+                <button *ngIf="p.status === 'STEP_UP_REQUIRED'"
+                        (click)="selectedStepUp = p"
+                        class="px-3 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-all inline-flex items-center gap-1.5">
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M7.864 4.243A7.5 7.5 0 0 1 19.5 10.5c0 2.92-.556 5.709-1.568 8.268M5.742 6.364A7.465 7.465 0 0 0 4.5 10.5a7.464 7.464 0 0 1-1.15 3.993m1.989 3.559A11.209 11.209 0 0 0 8.25 10.5a3.75 3.75 0 1 1 7.5 0c0 .527-.021 1.049-.064 1.565M12 10.5a14.94 14.94 0 0 1-3.6 9.75m6.633-4.596a18.666 18.666 0 0 1-2.485 5.33"/>
+                  </svg>
+                  <span>Verify Passkey</span>
                 </button>
+
+                <!-- B. Payment Truth Anomaly / Inconsistency Action -->
+                <button *ngIf="isPaymentInconsistent(p) && p.status !== 'STEP_UP_REQUIRED'"
+                        (click)="selectedInvestigatePayment = p"
+                        class="px-2.5 py-1 text-xs font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200/80 rounded-lg transition-colors inline-flex items-center gap-1.5">
+                  <svg class="w-3.5 h-3.5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/>
+                  </svg>
+                  <span>Investigate</span>
+                </button>
+
+                <!-- C. Normal Subtle Details Action -->
+                <button *ngIf="!isPaymentInconsistent(p) && p.status !== 'STEP_UP_REQUIRED'"
+                        (click)="viewDetails(p)"
+                        class="px-2.5 py-1 text-xs font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors">
+                  Details
+                </button>
+
               </td>
             </tr>
           </tbody>
@@ -150,235 +203,76 @@ import { TranslationService } from '../../core/language/translation.service';
       </div>
     </div>
 
-    <!-- ── Explain Payment Modal ─────────────────────────────────────────── -->
-    <div *ngIf="inspectTx()"
-         (click)="inspectTx.set(null)"
-         class="fixed inset-0 z-50 flex items-center justify-center p-4"
-         style="background:rgba(15,23,42,0.4);backdrop-filter:blur(2px);">
-      <div (click)="$event.stopPropagation()"
-           class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100">
-        <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-          <div class="flex items-center gap-2">
-            <span class="text-xl">{{ inspectTx()!.status === 'success' ? '✅' : '⚠️' }}</span>
-            <div>
-              <h3 class="text-sm font-bold text-slate-900">Payment Breakdown</h3>
-              <p class="text-[10px] font-mono text-slate-400">{{ inspectTx()!.id }}</p>
-            </div>
-          </div>
-          <button (click)="inspectTx.set(null)" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
-
-        <div class="space-y-4 text-xs">
-          <!-- Plain language explanation -->
-          <div class="p-4 rounded-xl"
-               [style]="inspectTx()!.status === 'success' ? 'background:#f0fdf4;border:1px solid #bbf7d0;' : 'background:#fef2f2;border:1px solid #fecaca;'">
-            <p class="text-[10px] font-bold uppercase tracking-wider mb-1"
-               [style]="inspectTx()!.status === 'success' ? 'color:#15803d;' : 'color:#b91c1c;'">
-              Plain Language Explanation
-            </p>
-            <p class="text-slate-700 leading-relaxed font-medium">
-              {{ getPlainExplanation(inspectTx()!) }}
-            </p>
-          </div>
-
-          <!-- Transaction details -->
-          <div class="grid grid-cols-2 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200/80">
-            <div>
-              <span class="text-[9px] font-bold text-slate-400 uppercase">Customer</span>
-              <p class="font-bold text-slate-800">{{ inspectTx()!.customerName }}</p>
-            </div>
-            <div>
-              <span class="text-[9px] font-bold text-slate-400 uppercase">Amount</span>
-              <p class="font-bold text-slate-800">{{ inspectTx()!.amount | currency:'INR':'symbol':'1.0-0' }}</p>
-            </div>
-            <div>
-              <span class="text-[9px] font-bold text-slate-400 uppercase">Payment Channel</span>
-              <p class="font-semibold text-slate-700">{{ inspectTx()!.method }} ({{ inspectTx()!.gateway }})</p>
-            </div>
-            <div>
-              <span class="text-[9px] font-bold text-slate-400 uppercase">Location</span>
-              <p class="font-semibold text-slate-700">{{ inspectTx()!.region }}</p>
-            </div>
-          </div>
-
-          <div class="flex gap-2 pt-2">
-            <button (click)="askAboutTx(inspectTx()!)"
-                    class="flex-1 py-2.5 rounded-xl text-xs font-semibold text-white transition-all"
-                    style="background:linear-gradient(135deg,#1e3a8a,#3b82f6);">
-              🎙 Ask Dhwani about this payment
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── Simulate Payment Modal ────────────────────────────────────────── -->
-    <div *ngIf="showSimulatorModal()"
-         (click)="showSimulatorModal.set(false)"
-         class="fixed inset-0 z-50 flex items-center justify-center p-4"
-         style="background:rgba(15,23,42,0.4);backdrop-filter:blur(2px);">
-      <div (click)="$event.stopPropagation()"
-           class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
-        <h3 class="text-base font-bold text-slate-900 mb-1">Simulate Real-time Transaction</h3>
-        <p class="text-xs text-slate-500 mb-4">Add a test transaction to verify live updating in the ledger.</p>
-
-        <form (submit)="submitSimulation()" class="space-y-3.5 text-xs">
-          <div>
-            <label class="block font-semibold text-slate-600 mb-1">Customer Name</label>
-            <input type="text" [(ngModel)]="newTx.customerName" name="cust" required
-                   class="w-full px-3.5 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-blue-400"/>
-          </div>
-
-          <div>
-            <label class="block font-semibold text-slate-600 mb-1">Amount (₹)</label>
-            <input type="number" [(ngModel)]="newTx.amount" name="amount" required
-                   class="w-full px-3.5 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-blue-400"/>
-          </div>
-
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block font-semibold text-slate-600 mb-1">Method</label>
-              <select [(ngModel)]="newTx.method" name="method" class="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none">
-                <option value="UPI">UPI</option>
-                <option value="Card">Card</option>
-                <option value="Netbanking">Netbanking</option>
-                <option value="Wallet">Wallet</option>
-              </select>
-            </div>
-            <div>
-              <label class="block font-semibold text-slate-600 mb-1">Status</label>
-              <select [(ngModel)]="newTx.status" name="status" class="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none">
-                <option value="success">Success</option>
-                <option value="failed">Failed</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="flex gap-2 pt-3">
-            <button type="submit"
-                    class="flex-1 py-2.5 rounded-xl text-xs font-semibold text-white"
-                    style="background:linear-gradient(135deg,#1e3a8a,#3b82f6);">
-              Inject Transaction
-            </button>
-            <button type="button" (click)="showSimulatorModal.set(false)"
-                    class="px-4 py-2.5 rounded-xl text-xs font-semibold border border-slate-200 text-slate-600">
-              Cancel
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <!-- Modals & Drawers -->
+    <app-create-payment *ngIf="showCreateModal" (close)="showCreateModal = false"></app-create-payment>
+    <app-risk-explanation *ngIf="selectedExplainPayment" [payment]="selectedExplainPayment" (close)="selectedExplainPayment = null"></app-risk-explanation>
+    <app-step-up-auth *ngIf="selectedStepUp" [payment]="selectedStepUp" (close)="selectedStepUp = null" (completed)="onStepUpDone()"></app-step-up-auth>
+    <app-payment-truth-drawer *ngIf="selectedInvestigatePayment" [payment]="selectedInvestigatePayment" (close)="selectedInvestigatePayment = null" (resolved)="onIncidentResolved($event)"></app-payment-truth-drawer>
   `,
   styles: [`:host { display:block; }`]
 })
 export class PaymentsComponent {
   searchQuery = '';
-  selectedStatus = 'all';
-  selectedMethod = 'all';
+  selectedStatus = 'ALL';
+  selectedMethod = 'ALL';
 
-  inspectTx = signal<Transaction | null>(null);
-  showSimulatorModal = signal(false);
-
-  newTx: {
-    customerName: string;
-    email: string;
-    amount: number;
-    currency: string;
-    method: 'UPI' | 'Card' | 'Netbanking' | 'Wallet';
-    gateway: 'Razorpay PG-1' | 'Razorpay PG-2' | 'HDFC PG' | 'ICICI PG';
-    status: 'success' | 'failed' | 'processing';
-    region: string;
-  } = {
-    customerName: 'Siddharth Varma',
-    email: 'siddharth.v@gmail.com',
-    amount: 5400,
-    currency: 'INR',
-    method: 'UPI',
-    gateway: 'Razorpay PG-1',
-    status: 'success',
-    region: 'Tamil Nadu',
-  };
+  showCreateModal = false;
+  selectedExplainPayment: Payment | null = null;
+  selectedStepUp: Payment | null = null;
+  selectedInvestigatePayment: Payment | null = null;
 
   constructor(
-    public dataService: DataService,
-    public i18n:        TranslationService,
-    private voice:      VoiceService,
-  ) {}
+    public paymentsService: PaymentsService,
+    private riskService: RiskService
+  ) { }
 
-  get filteredTransactions(): Transaction[] {
-    return this.dataService.transactions().filter(tx => {
+  isPaymentInconsistent(p: Payment): boolean {
+    return !!p.hasInconsistency || p.referenceNumber === 'TXN-9283749284' || p.status === 'PROCESSING' || !!p.incidentId;
+  }
+
+  get filteredPayments(): Payment[] {
+    return this.paymentsService.payments().filter(p => {
       const matchQuery = !this.searchQuery.trim() ||
-        tx.customerName.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        tx.id.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        tx.region.toLowerCase().includes(this.searchQuery.toLowerCase());
-      const matchStatus = this.selectedStatus === 'all' || tx.status === this.selectedStatus;
-      const matchMethod = this.selectedMethod === 'all' || tx.method === this.selectedMethod;
+        p.referenceNumber.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+        p.beneficiary.name.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+        p.region.toLowerCase().includes(this.searchQuery.toLowerCase());
+      const matchStatus = this.selectedStatus === 'ALL' || p.status === this.selectedStatus;
+      const matchMethod = this.selectedMethod === 'ALL' || p.method === this.selectedMethod;
       return matchQuery && matchStatus && matchMethod;
     });
   }
 
+  get totalVolume(): number {
+    return this.paymentsService.payments().reduce((sum, p) => sum + p.amount, 0);
+  }
+
+  get flaggedCount(): number {
+    return this.paymentsService.payments().filter(p => p.status === 'STEP_UP_REQUIRED' || p.status === 'FLAGGED_HIGH_RISK').length;
+  }
+
   statusBadgeStyle(status: string): string {
-    if (status === 'success')    return 'background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;';
-    if (status === 'failed')     return 'background:#fef2f2;color:#dc2626;border:1px solid #fecaca;';
+    if (status === 'SUCCESS' || status === 'APPROVED') return 'background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;';
+    if (status === 'STEP_UP_REQUIRED') return 'background:#fffbeb;color:#d97706;border:1px solid #fde68a;';
+    if (status === 'FLAGGED_HIGH_RISK' || status === 'REJECTED' || status === 'FAILED') return 'background:#fef2f2;color:#dc2626;border:1px solid #fecaca;';
     return 'background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;';
   }
 
-  statusDotColor(status: string): string {
-    if (status === 'success') return '#16a34a';
-    if (status === 'failed')  return '#dc2626';
-    return '#2563eb';
+  riskBadgeStyle(level?: string): string {
+    if (level === 'CRITICAL' || level === 'HIGH') return 'background:#fee2e2;color:#991b1b;';
+    if (level === 'MEDIUM') return 'background:#fef3c7;color:#92400e;';
+    return 'background:#dcfce7;color:#166534;';
   }
 
-  explainPayment(tx: Transaction) {
-    this.inspectTx.set(tx);
+  viewDetails(payment: Payment) {
+    this.selectedExplainPayment = payment;
+    this.riskService.explainRisk(payment.id).subscribe();
   }
 
-  getPlainExplanation(tx: Transaction): string {
-    if (tx.status === 'success') {
-      return `This payment of ₹${tx.amount.toLocaleString('en-IN')} was completed successfully via ${tx.method} on ${tx.gateway}. The money will be settled in your regular settlement cycle.`;
-    }
-    if (tx.failureReason?.includes('timeout') || tx.failureReason?.includes('Bank')) {
-      return `This payment did not go through because the customer's bank network took too long to respond. The customer was not charged, and they can safely try again.`;
-    }
-    if (tx.failureReason?.includes('funds') || tx.failureReason?.includes('balance')) {
-      return `This payment could not be completed because the customer's account did not have sufficient balance for ₹${tx.amount.toLocaleString('en-IN')}.`;
-    }
-    return `This payment was not completed by the payment gateway (${tx.gateway}). If multiple payments fail on this gateway, Dhwani can automatically reroute future payments to a secondary gateway.`;
+  onStepUpDone() {
+    this.paymentsService.fetchPayments();
   }
 
-  askAgent() {
-    this.voice.setDrawerOpen(true);
-    setTimeout(() => this.voice.processCommand('How are my payments doing this week?'), 200);
-  }
-
-  askAboutTx(tx: Transaction) {
-    this.inspectTx.set(null);
-    this.voice.setDrawerOpen(true);
-    setTimeout(() => {
-      this.voice.processCommand(`Why did payment ${tx.id} for ${tx.customerName} ${tx.status}?`);
-    }, 200);
-  }
-
-  openSimulatorModal() {
-    this.showSimulatorModal.set(true);
-  }
-
-  submitSimulation() {
-    this.dataService.addTransaction({
-      customerName: this.newTx.customerName,
-      email: this.newTx.email,
-      amount: Number(this.newTx.amount),
-      currency: 'INR',
-      method: this.newTx.method,
-      gateway: this.newTx.gateway,
-      status: this.newTx.status,
-      region: this.newTx.region,
-      failureReason: this.newTx.status === 'failed' ? 'Bank network timeout' : undefined,
-    });
-    this.showSimulatorModal.set(false);
+  onIncidentResolved(payment: Payment) {
+    this.paymentsService.fetchPayments();
   }
 }

@@ -38,6 +38,24 @@ export interface Payment {
   updatedAt: string;
   riskAssessment?: RiskAssessment;
   authorization?: AuthorizationRecord;
+  hasInconsistency?: boolean;
+  incidentId?: string;
+  inconsistencyDetails?: {
+    type: string;
+    rootCause: string;
+    bankStatus: string;
+    bankRef?: string;
+    gatewayStatus: string;
+    gatewayRef?: string;
+    webhookStatus: string;
+    webhookError?: string;
+    merchantStatus: string;
+    merchantError?: string;
+    finalVerdict: string;
+    confidence: number;
+    explanation?: string;
+    evidence?: string[];
+  };
 }
 
 export interface CreatePaymentDto {

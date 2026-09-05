@@ -31,12 +31,12 @@ export class AuditService {
         timestamp: new Date(Date.now() - 5 * 60000).toISOString(),
         eventType: 'AI_EXPLANATION_GENERATED',
         actorId: 'gemini_agent_service',
-        actorName: 'DeepAudit Gemini Service',
+        actorName: 'Dhwani AI',
         actorRole: 'AI_AGENT',
         targetEntity: 'PAYMENT',
         targetId: 'pay_TX9283749283',
         orgId: 'org_acme_corp',
-        summary: 'AI risk explanation generated and validated for payment TXN-9283749283',
+        summary: 'A risk explanation was prepared for this payment.',
         metadata: { paymentId: 'pay_TX9283749283', languageCode: 'en' },
         immutableHash: 'c7d24a983b0198f8e12456789abcdef0123456789abcdef0123456789abcdef0'
       },
@@ -46,12 +46,12 @@ export class AuditService {
         timestamp: new Date(Date.now() - 44 * 60000).toISOString(),
         eventType: 'STEP_UP_AUTH_REQUIRED',
         actorId: 'system_risk_engine',
-        actorName: 'Policy Enforcement',
+        actorName: 'Automated assistant',
         actorRole: 'SYSTEM',
         targetEntity: 'PAYMENT',
         targetId: 'pay_TX9283749283',
         orgId: 'org_acme_corp',
-        summary: 'Step-up passkey verification required for TXN-9283749283 due to HIGH risk score.',
+        summary: 'Additional approval requested for this payment as it exceeds standard verification rules.',
         metadata: { score: 65, level: 'HIGH' },
         immutableHash: '4f92bc49102837482910fedcba9876543210fedcba9876543210fedcba987654'
       },
@@ -66,7 +66,7 @@ export class AuditService {
         targetEntity: 'PAYMENT',
         targetId: 'pay_TX9283749283',
         orgId: 'org_acme_corp',
-        summary: 'Payment TXN-9283749283 created for ₹7,45,000 to Apex Logistics Mumbai',
+        summary: 'Payment created for ₹7,45,000 to Apex Logistics Mumbai.',
         metadata: { amount: 745000, method: 'RTGS' },
         immutableHash: 'a8b9c0d1e2f30123456789abcdef0123456789abcdef0123456789abcdef0123'
       }

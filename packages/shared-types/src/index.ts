@@ -7,3 +7,4 @@ export * from './audit.types';
 export * from './agent.types';
 export * from './voice.types';
 export * from './language.types';
+export * from './truth.types';

@@ -1,310 +1,428 @@
-import { Component, ElementRef, ViewChild, AfterViewInit, OnDestroy, HostListener, computed } from '@angular/core';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
-import * as echarts from 'echarts';
+import { RouterModule, Router } from '@angular/router';
 import { DataService } from '../../core/services/data.service';
 import { VoiceService } from '../../core/services/voice.service';
-import { TranslationService } from '../../core/language/translation.service';
-import { UserPreferencesService } from '../../core/services/user-preferences.service';
 import { AuthService } from '../../core/services/auth.service';
+import { NewsIntelligenceFeedComponent } from '../news/news-intelligence-feed.component';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, NewsIntelligenceFeedComponent],
   template: `
-    <!-- ── Simple Mode ──────────────────────────────────────────────────── -->
-    <div *ngIf="prefs.simpleMode()">
+    <div class="space-y-7 font-sans pb-10">
 
-      <!-- Greeting + Voice hero -->
-      <div class="text-center mb-8">
-        <p class="text-slate-500 text-sm mb-1">{{ greeting }}</p>
-        <h1 class="text-2xl font-bold text-slate-900 mb-6">{{ i18n.t('home.how_can_i_help') }}</h1>
-
-        <!-- Big mic button -->
-        <div class="flex flex-col items-center gap-3 mb-8">
-          <button id="home-mic-btn"
-                  (click)="openVoice()"
-                  class="w-20 h-20 rounded-full flex items-center justify-center transition-all shadow-lg"
-                  style="background:linear-gradient(135deg,#1e3a8a,#3b82f6);box-shadow:0 8px 32px rgba(59,130,246,0.4);"
-                  [class.animate-pulse]="voice.isListening()">
-            <svg class="w-9 h-9 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3Z"/>
-            </svg>
-          </button>
-          <p class="text-sm text-slate-500 font-medium">{{ i18n.t('home.voice_hint') }}</p>
-        </div>
-
-        <!-- Tap mode quick actions -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-lg mx-auto">
-          <button *ngFor="let card of tapCards"
-                  (click)="askQuestion(card.cmd)"
-                  class="flex flex-col items-center gap-2 p-5 rounded-2xl border-2 border-slate-100 bg-white transition-all hover:border-blue-200 hover:shadow-md"
-                  style="box-shadow:0 2px 8px rgba(0,0,0,0.04);">
-            <span class="text-3xl">{{ card.icon }}</span>
-            <span class="text-sm font-bold text-slate-800">{{ i18n.t(card.labelKey) }}</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Simple summary cards -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-
-        <div class="bg-white rounded-2xl p-6" style="border:2px solid #dbeafe;box-shadow:0 2px 12px rgba(59,130,246,0.08);">
-          <p class="text-xs font-bold text-blue-600 uppercase tracking-wider mb-2">{{ i18n.t('simple.money.label') }}</p>
-          <p class="text-3xl font-extrabold text-slate-900 mb-1">{{ data.merchantSummary().revenueLabel }}</p>
-          <p class="text-sm text-slate-500">{{ data.merchantSummary().revenueExplain }}</p>
-        </div>
-
-        <div class="bg-white rounded-2xl p-6" style="border:2px solid #dcfce7;box-shadow:0 2px 12px rgba(16,185,129,0.08);">
-          <p class="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-2">{{ i18n.t('simple.orders.label') }}</p>
-          <p class="text-3xl font-extrabold text-slate-900 mb-1">{{ data.merchantSummary().orderLabel }}</p>
-          <p class="text-sm text-slate-500">Orders this week</p>
-        </div>
-
-        <div class="bg-white rounded-2xl p-6 sm:col-span-2" style="border:2px solid #fef9c3;box-shadow:0 2px 12px rgba(234,179,8,0.08);">
-          <p class="text-xs font-bold text-amber-600 uppercase tracking-wider mb-2">⚠️ {{ i18n.t('simple.watch.label') }}</p>
-          <p class="text-sm text-slate-700">{{ data.merchantSummary().watchItem }}</p>
-        </div>
-
-        <div class="bg-white rounded-2xl p-6" style="border:2px solid #d1fae5;box-shadow:0 2px 12px rgba(16,185,129,0.06);">
-          <p class="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-2">📍 {{ i18n.t('simple.best_area.label') }}</p>
-          <p class="text-2xl font-extrabold text-slate-900">{{ data.merchantSummary().bestArea }}</p>
-        </div>
-
-        <div class="bg-white rounded-2xl p-6" style="border:2px solid #ede9fe;box-shadow:0 2px 12px rgba(139,92,246,0.06);">
-          <p class="text-xs font-bold text-violet-600 uppercase tracking-wider mb-2">💡 {{ i18n.t('simple.advice.label') }}</p>
-          <p class="text-sm text-slate-700">{{ data.merchantSummary().advice }}</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── Standard Mode ─────────────────────────────────────────────────── -->
-    <div *ngIf="!prefs.simpleMode()">
-
-      <!-- Page header + mode switch -->
-      <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-7">
+      <!-- ── Top Header Row ─────────────────────────────────────────────── -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <p class="text-slate-500 text-sm">{{ greeting }}</p>
-          <h1 class="text-2xl font-bold text-slate-900 tracking-tight">{{ i18n.t('home.how_can_i_help') }}</h1>
+          <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
+            <span>Corporate Treasury & Security Dashboard</span>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              Live & Protected
+            </span>
+          </h1>
+          <p class="text-xs sm:text-sm text-slate-500 mt-0.5">
+            {{ greeting }}, {{ merchantName }}. Real-time settlement overview, corporate card controls & compliance feed.
+          </p>
         </div>
-        <div class="mt-3 sm:mt-1 flex items-center gap-2">
+
+        <!-- Quick AI Assistant Action -->
+        <div class="flex items-center gap-3">
           <button (click)="openVoice()"
-                  class="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white rounded-xl transition-all"
-                  style="background:linear-gradient(135deg,#1e3a8a,#3b82f6);box-shadow:0 4px 12px rgba(59,130,246,0.3);">
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-[#4f46e5] to-[#4338ca] hover:from-[#4338ca] hover:to-[#3730a3] shadow-[0_4px_14px_rgba(79,70,229,0.3)] transition-all active:scale-[0.98]">
+            <svg class="w-4 h-4 text-indigo-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3Z"/>
             </svg>
-            Ask Dhwani
+            <span>Ask Dhwani AI</span>
           </button>
         </div>
       </div>
 
-      <!-- Metric cards -->
-      <div class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-        <div *ngFor="let stat of primaryStats"
-             class="bg-white rounded-2xl p-5 transition-all hover:shadow-md hover:-translate-y-0.5 cursor-default"
-             style="border:1px solid rgba(15,31,69,0.07);box-shadow:0 2px 8px rgba(15,31,69,0.04);">
-          <div class="flex items-start justify-between mb-4">
+      <!-- ── Main 2-Column Structured Layout (Smart Bank / Stripe style) ── -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+        <!-- ── Left Column: Card, Quick Organizing Actions, Limits (5 cols) ── -->
+        <div class="lg:col-span-5 space-y-5">
+
+          <!-- Card Header & Universal Corporate Card -->
+          <div class="bg-white rounded-3xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-200/80">
+            
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-2 text-xs font-bold text-slate-700">
+                <svg class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                </svg>
+                <span>Universal Corporate Card</span>
+              </div>
+              <span class="text-[11px] font-semibold text-slate-400">Default Card</span>
+            </div>
+
+            <!-- ── Beautiful Gradient Card ──────────────────────────────── -->
+            <div class="relative w-full h-52 rounded-2xl p-5 text-white flex flex-col justify-between overflow-hidden shadow-[0_12px_30px_rgba(15,95,100,0.3)] transition-transform hover:scale-[1.01] duration-300"
+                 style="background: linear-gradient(135deg, #1b6b7a 0%, #1e878e 45%, #62b19f 80%, #90cca8 100%);">
+              
+              <!-- Subtle Aurora Glow inside card -->
+              <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-white/20 rounded-full blur-2xl pointer-events-none"></div>
+              
+              <!-- Top Card Info -->
+              <div class="flex items-start justify-between relative z-10">
+                <div>
+                  <p class="text-[11px] uppercase tracking-wider text-teal-100 font-semibold">Current Balance</p>
+                  <p class="text-2xl sm:text-3xl font-extrabold tracking-tight mt-0.5">
+                    ₹ 5,75,420.00
+                  </p>
+                </div>
+                <!-- Mastercard / Payment Emblem -->
+                <div class="flex items-center -space-x-2">
+                  <div class="w-6 h-6 rounded-full bg-[#eb001b] opacity-90"></div>
+                  <div class="w-6 h-6 rounded-full bg-[#f79e1b] opacity-90"></div>
+                </div>
+              </div>
+
+              <!-- Bottom Card Info -->
+              <div class="flex items-end justify-between relative z-10 pt-4">
+                <div>
+                  <p class="font-mono text-xs tracking-widest text-teal-50">
+                    5282 3456 7890 1289
+                  </p>
+                  <p class="text-[10px] text-teal-200 mt-1 font-medium">Dhwani Access / Enterprise Platinum</p>
+                </div>
+                <div class="text-right">
+                  <p class="text-[9px] uppercase text-teal-200 font-semibold">Expires</p>
+                  <p class="font-mono text-xs text-teal-50 font-bold">09/28</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- ── Quick Organizing Action Icons ──────────────────────────── -->
+            <div class="grid grid-cols-3 gap-3 pt-6 pb-2">
+              
+              <!-- 1. Fund Card -->
+              <button (click)="openAction('fund')"
+                      class="flex flex-col items-center gap-2 p-3 rounded-2xl hover:bg-slate-50 transition-colors group text-center">
+                <div class="w-12 h-12 rounded-full border border-slate-200/90 bg-white shadow-sm flex items-center justify-center text-slate-700 group-hover:border-[#4f46e5] group-hover:text-[#4f46e5] transition-all">
+                  <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                  </svg>
+                </div>
+                <span class="text-xs font-semibold text-slate-700 group-hover:text-slate-900">Fund card</span>
+              </button>
+
+              <!-- 2. Limits & Controls -->
+              <button (click)="openAction('limits')"
+                      class="flex flex-col items-center gap-2 p-3 rounded-2xl hover:bg-slate-50 transition-colors group text-center">
+                <div class="w-12 h-12 rounded-full border border-slate-200/90 bg-white shadow-sm flex items-center justify-center text-slate-700 group-hover:border-[#4f46e5] group-hover:text-[#4f46e5] transition-all">
+                  <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
+                  </svg>
+                </div>
+                <span class="text-xs font-semibold text-slate-700 group-hover:text-slate-900">Limits</span>
+              </button>
+
+              <!-- 3. Transfer / Payout -->
+              <button (click)="openAction('transfer')"
+                      class="flex flex-col items-center gap-2 p-3 rounded-2xl hover:bg-slate-50 transition-colors group text-center">
+                <div class="w-12 h-12 rounded-full border border-slate-200/90 bg-white shadow-sm flex items-center justify-center text-slate-700 group-hover:border-[#4f46e5] group-hover:text-[#4f46e5] transition-all">
+                  <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+                  </svg>
+                </div>
+                <span class="text-xs font-semibold text-slate-700 group-hover:text-slate-900">Transfer</span>
+              </button>
+
+            </div>
+
+            <!-- ── Card Info Metadata ──────────────────────────────────────── -->
+            <div class="pt-4 border-t border-slate-100 space-y-2.5 text-xs">
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400 font-medium">Status</span>
+                <span class="font-bold text-emerald-600 flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  Active
+                </span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400 font-medium">Card number</span>
+                <span class="font-mono text-slate-800 font-semibold">5282 3456 7890 1289</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400 font-medium">Settlement Rate</span>
+                <span class="text-slate-800 font-semibold">Instant (99.4% Success)</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- ── Limits & Usage Gauge Card ──────────────────────────────── -->
+          <div class="bg-white rounded-3xl p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-200/80">
+            <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4">Limits & Quota</h3>
+            
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3.5">
+                <!-- Donut Progress Ring -->
+                <div class="relative w-12 h-12 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-12 h-12 -rotate-90" viewBox="0 0 36 36">
+                    <path class="text-slate-100" stroke-width="4.5" stroke="currentColor" fill="none"
+                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                    <path class="text-[#f97316]" stroke-dasharray="45, 100" stroke-width="4.5" stroke-linecap="round" stroke="currentColor" fill="none"
+                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                  </svg>
+                  <span class="absolute text-[10px] font-extrabold text-slate-800">45%</span>
+                </div>
+                <div>
+                  <p class="text-xs font-semibold text-slate-400">Online settlement limit</p>
+                  <p class="text-sm font-bold text-slate-900 mt-0.5">₹ 1,50,000 / ₹ 3,50,000</p>
+                </div>
+              </div>
+
+              <a routerLink="/app/settings" class="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                </svg>
+              </a>
+            </div>
+
+            <!-- Currency Ticker mini-bar -->
+            <div class="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-slate-100 text-center">
+              <div class="p-2 rounded-xl bg-slate-50">
+                <p class="text-[10px] text-slate-400 font-semibold">USD / INR</p>
+                <p class="text-xs font-bold text-slate-800 mt-0.5">₹ 83.42</p>
+              </div>
+              <div class="p-2 rounded-xl bg-slate-50">
+                <p class="text-[10px] text-slate-400 font-semibold">EUR / INR</p>
+                <p class="text-xs font-bold text-slate-800 mt-0.5">₹ 90.15</p>
+              </div>
+              <div class="p-2 rounded-xl bg-slate-50">
+                <p class="text-[10px] text-slate-400 font-semibold">GBP / INR</p>
+                <p class="text-xs font-bold text-slate-800 mt-0.5">₹ 105.80</p>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- ── Right Column: Recent Activity Feed (7 cols) ───────────────── -->
+        <div class="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-7 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-200/80">
+          
+          <!-- Header with Filter Controls -->
+          <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
             <div>
-              <p class="text-xs font-semibold text-slate-400 mb-0.5">{{ stat.label }}</p>
-              <p class="text-[10px] text-slate-300">{{ stat.sublabel }}</p>
+              <h2 class="text-lg font-bold text-slate-900 tracking-tight">Recent activity</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Real-time ledger updates</p>
             </div>
-            <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" [style.background]="stat.iconBg">
-              <svg class="w-4 h-4" [style.color]="stat.iconColor" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" [attr.d]="stat.iconPath"/>
-              </svg>
+
+            <div class="flex items-center gap-2">
+              <button (click)="toggleCategoryFilter()" 
+                      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+                <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
+                </svg>
+                <span>Categories</span>
+              </button>
+
+              <button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+                <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 9v7.5" />
+                </svg>
+                <span>Date</span>
+              </button>
             </div>
           </div>
-          <p class="text-2xl font-bold text-slate-900 tracking-tight mb-1">{{ stat.value }}</p>
-          <p class="text-[11px] text-slate-500 italic mb-2">{{ stat.explain }}</p>
-          <span class="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full"
-                [ngClass]="stat.positive ? 'text-emerald-700 bg-emerald-50' : 'text-red-600 bg-red-50'">
-            <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-              <path stroke-linecap="round" stroke-linejoin="round" [attr.d]="stat.positive ? 'm4.5 15.75 7.5-7.5 7.5 7.5' : 'm19.5 8.25-7.5 7.5-7.5-7.5'"/>
-            </svg>
-            {{ stat.change }}
-          </span>
-        </div>
-      </div>
 
-      <!-- Charts row -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
-        <!-- Activity chart -->
-        <div class="lg:col-span-2 bg-white rounded-2xl p-5"
-             style="border:1px solid rgba(15,31,69,0.07);box-shadow:0 2px 8px rgba(15,31,69,0.04);">
-          <div class="flex items-center justify-between mb-4">
+          <!-- Transactions List Structured by Date -->
+          <div class="space-y-6">
+
+            <!-- Group 1: May 22, 2026 -->
             <div>
-              <h3 class="text-sm font-bold text-slate-800">Payment activity</h3>
-              <p class="text-[11px] text-slate-400 mt-0.5">Revenue this year · Monthly view</p>
-            </div>
-          </div>
-          <div #activityChart style="height:220px;width:100%;"></div>
-        </div>
+              <p class="text-xs font-semibold text-slate-400 mb-3 px-1">May 22, 2026</p>
+              <div class="space-y-2.5">
+                
+                <!-- 1. Starbucks -->
+                <div class="flex items-center justify-between p-2.5 rounded-2xl hover:bg-slate-50 transition-colors">
+                  <div class="flex items-center gap-3.5">
+                    <div class="w-10 h-10 rounded-full bg-[#00704a] text-white flex items-center justify-center font-bold text-xs shadow-sm flex-shrink-0">
+                      ☕
+                    </div>
+                    <div>
+                      <p class="text-sm font-bold text-slate-900 leading-tight">Starbucks</p>
+                      <p class="text-xs text-slate-400 mt-0.5">Coffee and restaurants</p>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <p class="text-sm font-extrabold text-slate-900">- ₹ 415.00</p>
+                    <p class="text-[11px] text-slate-400 mt-0.5">07:05 PM</p>
+                  </div>
+                </div>
 
-        <!-- Recent payments -->
-        <div class="bg-white rounded-2xl p-5 flex flex-col"
-             style="border:1px solid rgba(15,31,69,0.07);box-shadow:0 2px 8px rgba(15,31,69,0.04);">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-sm font-bold text-slate-800">Recent payments</h3>
-            <a routerLink="/app/payments" class="text-[11px] font-semibold text-blue-600 hover:text-blue-700">View all →</a>
-          </div>
-          <div class="flex-1 space-y-3">
-            <div *ngFor="let tx of recentPayments" class="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 transition-colors">
-              <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
-                   [style.background]="avatarColor(tx.customerName)">
-                {{ tx.customerName.charAt(0) }}
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-xs font-semibold text-slate-800 truncate">{{ tx.customerName }}</p>
-                <p class="text-[10px] text-slate-400">{{ tx.method }} · {{ tx.region }}</p>
-              </div>
-              <div class="text-right flex-shrink-0">
-                <p class="text-xs font-bold" [ngClass]="tx.status === 'success' ? 'text-emerald-600' : 'text-red-500'">
-                  {{ tx.status === 'success' ? '+' : '-' }}{{ tx.amount | currency:'INR':'symbol':'1.0-0' }}
-                </p>
-                <p class="text-[10px] text-slate-400">{{ tx.status }}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+                <!-- 2. Gloria Sparks -->
+                <div class="flex items-center justify-between p-2.5 rounded-2xl hover:bg-slate-50 transition-colors">
+                  <div class="flex items-center gap-3.5">
+                    <div class="w-10 h-10 rounded-full bg-[#4096a5] text-white flex items-center justify-center font-bold text-xs shadow-sm flex-shrink-0">
+                      GS
+                    </div>
+                    <div>
+                      <p class="text-sm font-bold text-slate-900 leading-tight">Gloria Sparks</p>
+                      <p class="text-xs text-slate-400 mt-0.5">Receive Settlement</p>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <p class="text-sm font-extrabold text-emerald-600">+ ₹ 11,200.00</p>
+                    <p class="text-[11px] text-slate-400 mt-0.5">06:33 PM</p>
+                  </div>
+                </div>
 
-      <!-- Business signals -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div *ngFor="let sig of businessSignals"
-             class="bg-white rounded-2xl p-5 flex flex-col justify-between transition-all hover:shadow-md hover:-translate-y-0.5"
-             style="border:1px solid rgba(15,31,69,0.07);box-shadow:0 2px 8px rgba(15,31,69,0.04);">
-          <div>
-            <div class="flex items-center gap-2 mb-3">
-              <span class="w-2 h-2 rounded-full" [ngClass]="{'bg-emerald-400':sig.type==='growth','bg-amber-400':sig.type==='risk','bg-blue-400':sig.type==='opportunity'}"></span>
-              <span class="text-[10px] font-bold uppercase tracking-widest"
-                    [ngClass]="{'text-emerald-600':sig.type==='growth','text-amber-600':sig.type==='risk','text-blue-600':sig.type==='opportunity'}">
-                {{ sig.typeLabel }}
-              </span>
+                <!-- 3. Amazon -->
+                <div class="flex items-center justify-between p-2.5 rounded-2xl hover:bg-slate-50 transition-colors">
+                  <div class="flex items-center gap-3.5">
+                    <div class="w-10 h-10 rounded-full bg-[#131921] text-white flex items-center justify-center font-bold text-sm shadow-sm flex-shrink-0">
+                      a
+                    </div>
+                    <div>
+                      <p class="text-sm font-bold text-slate-900 leading-tight">Amazon AWS</p>
+                      <p class="text-xs text-slate-400 mt-0.5">Online Cloud Services</p>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <p class="text-sm font-extrabold text-slate-900">- ₹ 9,198.00</p>
+                    <p class="text-[11px] text-slate-400 mt-0.5">01:10 PM</p>
+                  </div>
+                </div>
+
+                <!-- 4. Walmart -->
+                <div class="flex items-center justify-between p-2.5 rounded-2xl hover:bg-slate-50 transition-colors">
+                  <div class="flex items-center gap-3.5">
+                    <div class="w-10 h-10 rounded-full bg-[#0071dc] text-white flex items-center justify-center font-bold text-base shadow-sm flex-shrink-0">
+                      ✱
+                    </div>
+                    <div>
+                      <p class="text-sm font-bold text-slate-900 leading-tight">Walmart Retail</p>
+                      <p class="text-xs text-slate-400 mt-0.5">Stores & Inventory</p>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <p class="text-sm font-extrabold text-slate-900">- ₹ 1,120.00</p>
+                    <p class="text-[11px] text-slate-400 mt-0.5">08:27 AM</p>
+                  </div>
+                </div>
+
+              </div>
             </div>
-            <p class="text-xs font-medium text-slate-700 leading-relaxed">{{ sig.description }}</p>
-            <p *ngIf="sig.metric" class="text-base font-bold text-slate-900 mt-3">{{ sig.metric }}</p>
+
+            <!-- Group 2: May 21, 2026 -->
+            <div>
+              <p class="text-xs font-semibold text-slate-400 mb-3 px-1">May 21, 2026</p>
+              <div class="space-y-2.5">
+                
+                <!-- 5. Adam Miller -->
+                <div class="flex items-center justify-between p-2.5 rounded-2xl hover:bg-slate-50 transition-colors">
+                  <div class="flex items-center gap-3.5">
+                    <div class="w-10 h-10 rounded-full bg-[#3a936a] text-white flex items-center justify-center font-bold text-xs shadow-sm flex-shrink-0">
+                      AM
+                    </div>
+                    <div>
+                      <p class="text-sm font-bold text-slate-900 leading-tight">Adam Miller</p>
+                      <p class="text-xs text-slate-400 mt-0.5">Sent Payout</p>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <p class="text-sm font-extrabold text-slate-900">- ₹ 8,900.00</p>
+                    <p class="text-[11px] text-slate-400 mt-0.5">06:06 PM</p>
+                  </div>
+                </div>
+
+                <!-- 6. Subway -->
+                <div class="flex items-center justify-between p-2.5 rounded-2xl hover:bg-slate-50 transition-colors">
+                  <div class="flex items-center gap-3.5">
+                    <div class="w-10 h-10 rounded-full bg-[#008938] text-white flex items-center justify-center font-bold text-xs shadow-sm flex-shrink-0">
+                      🥪
+                    </div>
+                    <div>
+                      <p class="text-sm font-bold text-slate-900 leading-tight">Subway</p>
+                      <p class="text-xs text-slate-400 mt-0.5">Coffee and restaurants</p>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <p class="text-sm font-extrabold text-slate-900">- ₹ 1,020.00</p>
+                    <p class="text-[11px] text-slate-400 mt-0.5">01:02 PM</p>
+                  </div>
+                </div>
+
+                <!-- 7. Sam Gilbert -->
+                <div class="flex items-center justify-between p-2.5 rounded-2xl hover:bg-slate-50 transition-colors">
+                  <div class="flex items-center gap-3.5">
+                    <div class="w-10 h-10 rounded-full bg-[#529b7c] text-white flex items-center justify-center font-bold text-xs shadow-sm flex-shrink-0">
+                      JB
+                    </div>
+                    <div>
+                      <p class="text-sm font-bold text-slate-900 leading-tight">Sam Gilbert</p>
+                      <p class="text-xs text-slate-400 mt-0.5">Receive Payment</p>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <p class="text-sm font-extrabold text-emerald-600">+ ₹ 8,600.00</p>
+                    <p class="text-[11px] text-slate-400 mt-0.5">08:22 PM</p>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
           </div>
-          <div class="mt-5 pt-4" style="border-top:1px solid rgba(15,31,69,0.06);">
-            <a [routerLink]="sig.route" class="inline-flex items-center gap-1.5 text-xs font-semibold transition-colors"
-               [ngClass]="{'text-emerald-600 hover:text-emerald-700':sig.type==='growth','text-amber-600 hover:text-amber-700':sig.type==='risk','text-blue-600 hover:text-blue-700':sig.type==='opportunity'}">
-              {{ sig.action }}
-              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/>
-              </svg>
+
+          <!-- Bottom Show More CTA -->
+          <div class="mt-8 pt-4 border-t border-slate-100 text-center">
+            <a routerLink="/app/payments"
+               class="inline-block px-8 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all uppercase tracking-wider shadow-sm">
+              Show More Transactions →
             </a>
           </div>
+
         </div>
+
       </div>
+
+      <!-- ── Market & Regulatory News Intelligence Feed ─────────────────── -->
+      <app-news-intelligence-feed></app-news-intelligence-feed>
+
     </div>
   `,
-  styles: [`:host { display:block; }`]
+  styles: [`:host { display: block; }`]
 })
-export class HomeComponent implements AfterViewInit, OnDestroy {
-  @ViewChild('activityChart') activityChartEl!: ElementRef;
-  private chartInstance: echarts.ECharts | null = null;
-
-  tapCards = [
-    { icon: '💰', labelKey: 'home.tap.money',   cmd: 'How much money did I receive this week?' },
-    { icon: '🛒', labelKey: 'home.tap.orders',  cmd: 'How many orders did I get?' },
-    { icon: '📍', labelKey: 'home.tap.where',   cmd: 'Which city is doing best?' },
-    { icon: '⚠️', labelKey: 'home.tap.problem', cmd: 'Are there any payment problems?' },
-    { icon: '💡', labelKey: 'home.tap.advice',  cmd: 'What should I do to improve my business?' },
-  ];
-
-  primaryStats = [
-    {
-      label: 'Total Revenue', sublabel: 'This month', value: '₹12.4L', change: '+18.4%', positive: true,
-      explain: 'You received more money this month than last.',
-      iconColor: '#3b82f6', iconBg: '#eff6ff',
-      iconPath: 'M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z',
-    },
-    {
-      label: 'Transactions', sublabel: 'This month', value: '18,492', change: '+12.2%', positive: true,
-      explain: 'More orders came in compared to last month.',
-      iconColor: '#8b5cf6', iconBg: '#f5f3ff',
-      iconPath: 'M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5',
-    },
-    {
-      label: 'Customers', sublabel: 'This month', value: '8,291', change: '+8.1%', positive: true,
-      explain: 'More people bought from you this month.',
-      iconColor: '#f59e0b', iconBg: '#fffbeb',
-      iconPath: 'M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z',
-    },
-    {
-      label: 'Payment Success', sublabel: 'This month', value: '96.8%', change: '+1.2%', positive: true,
-      explain: 'Out of 100 payments, about 97 went through.',
-      iconColor: '#10b981', iconBg: '#ecfdf5',
-      iconPath: 'M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
-    },
-  ];
-
-  businessSignals = [
-    { type: 'growth',      typeLabel: 'Growth signal',  description: 'Coimbatore payments increased 31% this month. Your best-performing city right now.', metric: '₹8.2L revenue', route: '/app/map',          action: 'View on map →' },
-    { type: 'risk',        typeLabel: 'Watch this',      description: 'More orders were returned in Madurai this week. A small offer might bring customers back.',   metric: '',            route: '/app/opportunities', action: 'See what to do →' },
-    { type: 'opportunity', typeLabel: 'Opportunity',     description: 'Trichy has many repeat customers who haven\'t bought in 30 days. A reminder could help.',     metric: '',            route: '/app/customers',     action: 'View customers →' },
-  ];
-
-  private avatarColors = [
-    'linear-gradient(135deg,#3b82f6,#6366f1)',
-    'linear-gradient(135deg,#8b5cf6,#a78bfa)',
-    'linear-gradient(135deg,#f59e0b,#fbbf24)',
-    'linear-gradient(135deg,#10b981,#34d399)',
-    'linear-gradient(135deg,#ef4444,#f87171)',
-    'linear-gradient(135deg,#ec4899,#f472b6)',
-  ];
-
+export class HomeComponent {
   constructor(
-    public data:  DataService,
+    public data: DataService,
     public voice: VoiceService,
-    public i18n:  TranslationService,
-    public prefs: UserPreferencesService,
     private auth: AuthService,
+    private router: Router,
   ) {}
+
+  get merchantName(): string {
+    return this.auth.currentUser()?.name ?? 'Merchant';
+  }
 
   get greeting(): string {
     const h = new Date().getHours();
-    const name = this.auth.currentUser()?.name ?? 'Merchant';
-    const key = h < 12 ? 'home.greeting.morning' : h < 17 ? 'home.greeting.afternoon' : 'home.greeting.evening';
-    return `${this.i18n.t(key)}, ${name}.`;
+    return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
   }
 
-  get recentPayments() { return this.data.transactions().slice(0, 5); }
-
-  avatarColor(name: string): string {
-    return this.avatarColors[name.charCodeAt(0) % this.avatarColors.length];
-  }
-
-  openVoice() { this.voice.setDrawerOpen(true); }
-
-  askQuestion(cmd: string) {
+  openVoice() {
     this.voice.setDrawerOpen(true);
-    setTimeout(() => this.voice.processCommand(cmd), 200);
   }
 
-  ngAfterViewInit() { setTimeout(() => this.initChart(), 0); }
-  ngOnDestroy()     { this.chartInstance?.dispose(); }
+  openAction(type: 'fund' | 'limits' | 'transfer') {
+    if (type === 'transfer') {
+      this.router.navigate(['/app/authorizations']);
+    } else if (type === 'limits') {
+      this.router.navigate(['/app/settings']);
+    } else {
+      this.router.navigate(['/app/payments']);
+    }
+  }
 
-  @HostListener('window:resize')
-  onResize() { this.chartInstance?.resize(); }
-
-  private initChart() {
-    if (!this.activityChartEl) return;
-    this.chartInstance = echarts.init(this.activityChartEl.nativeElement);
-    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const income  = [3.2, 4.1, 5.6, 4.8, 6.2, 7.8, 6.5, 8.2, 7.4, 9.1, 10.2, 12.4];
-    const expense = [2.1, 2.8, 3.4, 3.1, 4.2, 5.1, 4.6, 5.4, 4.9, 5.8,  6.2,  7.1];
-    this.chartInstance.setOption({
-      tooltip: { trigger: 'axis', backgroundColor: '#fff', borderWidth: 1, borderColor: 'rgba(15,31,69,0.08)', textStyle: { fontSize: 11, fontFamily: 'Inter,system-ui', color: '#334155' } },
-      legend: { data: ['Revenue', 'Expenses'], right: 0, itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11, color: '#94a3b8' } },
-      grid: { left: 0, right: 16, bottom: 0, top: 28, containLabel: true },
-      xAxis: { type: 'category', boundaryGap: false, data: months, axisLine: { lineStyle: { color: 'rgba(15,31,69,0.08)' } }, axisTick: { show: false }, axisLabel: { fontSize: 10, color: '#94a3b8' } },
-      yAxis: { type: 'value', axisLine: { show: false }, axisTick: { show: false }, splitLine: { lineStyle: { color: 'rgba(15,31,69,0.06)', type: 'dashed' } }, axisLabel: { fontSize: 10, color: '#94a3b8', formatter: '₹{value}L' } },
-      series: [
-        { name: 'Revenue',  type: 'line', data: income,  smooth: 0.5, showSymbol: false, lineStyle: { width: 2.5, color: '#3b82f6' }, itemStyle: { color: '#3b82f6' }, areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(59,130,246,0.12)'},{offset:1,color:'rgba(59,130,246,0)'}]) } },
-        { name: 'Expenses', type: 'line', data: expense, smooth: 0.5, showSymbol: false, lineStyle: { width: 2.5, color: '#8b5cf6' }, itemStyle: { color: '#8b5cf6' }, areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(139,92,246,0.08)'},{offset:1,color:'rgba(139,92,246,0)'}]) } },
-      ],
-    });
+  toggleCategoryFilter() {
+    this.router.navigate(['/app/payments']);
   }
 }

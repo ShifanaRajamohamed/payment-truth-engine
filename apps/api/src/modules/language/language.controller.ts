@@ -9,7 +9,7 @@ export class LanguageController {
   };
 
   getByCode = (req: Request, res: Response) => {
-    const { code } = req.params;
+    const code = req.params.code as string;
     const language = LanguageRegistry.getByCode(code);
     return ApiResponse.success(res, language);
   };

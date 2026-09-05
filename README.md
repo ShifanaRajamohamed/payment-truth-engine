@@ -1,122 +1,107 @@
-# DeepAudit AI 🛡️
+# Payment Truth AI
 
-> **AI-Assisted Corporate Payment Authorization & Fraud Prevention Platform**
+> **“When money is involved, everyone should see the same truth.”**
 
-DeepAudit AI is an enterprise-grade fintech platform designed for dual-control payment authorization, deterministic fraud signal scoring, multilingual voice interaction, and immutable cryptographic audit logging.
+**Payment Truth AI** is a production-quality, voice-first payment incident investigation and deterministic state resolution platform.
+
+This is **NOT** a customer-support chatbot. It is an **AI Payment Incident Resolver** that correlates payment telemetry across distributed systems (Bank, Payment Gateway, Webhook, Merchant Backend, and Merchant Database), determines the verifiable root cause, explains the truth in multiple Indian languages (Tamil, Tanglish, Hindi, English), and executes **safe state repair actions** strictly after deterministic invariant verification.
 
 ---
 
-## 🏛️ Monorepo Architecture
+## 🏛️ Core Architecture & Principles
 
-```
-deepaudit-ai/
-│
-├── apps/
-│   ├── web/                         # Angular 19 Frontend (Signal-based, TailwindCSS)
-│   └── api/                         # Node.js Express Backend Service
-│
-├── packages/
-│   ├── shared-types/                # Shared TypeScript domain models & DTOs
-│   ├── risk-engine/                 # Deterministic 6-signal fraud detection engine
-│   ├── ai-agent/                    # Gemini AI integration and authorized tool layer
-│   ├── voice/                       # Sarvam STT/TTS voice provider abstraction
-│   └── language/                    # 22 Indian scheduled languages configuration
-│
-├── infrastructure/
-│   ├── docker/                      # Dockerfile.api & Dockerfile.web
-│   ├── db/init.sql                  # PostgreSQL normalized relational schema
-│   └── docker-compose.yml           # Multi-container orchestration (DB + API + Web)
-│
-├── docs/
-│   ├── architecture.md              # System sequence diagrams & topology
-│   ├── api-specification.md         # Full REST API endpoints specification
-│   └── risk-rules.md                # Deterministic scoring matrix & signal policies
-│
-├── .env.example                     # Environment template (API keys, ports, DB)
-├── README.md
-└── package.json                     # Monorepo workspaces configuration
+```text
+VOICE / TEXT COMPLAINT
+        ↓
+INTENT & ENTITY EXTRACTION
+        ↓
+EVIDENCE COLLECTION AGENT (Bank, Gateway, Webhook, Merchant DB)
+        ↓
+CHRONOLOGICAL TIMELINE CORRELATION
+        ↓
+GEMINI AI ROOT CAUSE REASONING & VOICE EXPLANATION
+        ↓
+DETERMINISTIC VERIFICATION LAYER (Strict Invariant Rules)
+        ↓
+SAFE STATE REPAIR ENGINE (Merchant State Sync)
+        ↓
+IMMUTABLE AUDIT LOG
 ```
 
----
-
-## 🚀 Key Features
-
-1. **Deterministic Fraud Risk Scoring**:
-   - Scores every payment mathematically from 0 to 100 based on 6 independent signal categories:
-     - Amount thresholds & single disbursement limits.
-     - 24-hour statutory beneficiary cooling periods.
-     - Unrecognized device profiles.
-     - Geographically impossible velocity leaps.
-     - Off-hours treasury disbursements (1:00 AM – 5:00 AM IST).
-     - Rapid-succession structuring & velocity bursts.
-2. **Backend-Isolated AI Architecture (Gemini 2.5 Flash)**:
-   - **Zero API Key Leakage**: Gemini keys exist strictly in backend environment variables.
-   - **No Database Access**: Gemini only receives controlled, authorized domain context.
-   - **No Probabilistic Scoring**: Gemini only translates and explains verified signals in plain language.
-3. **Multilingual Voice Assistant (Sarvam AI)**:
-   - Supports all 22 Scheduled Indian Languages + English (`en`, `hi`, `ta`, `te`, `bn`, `mr`, `gu`, `kn`, `ml`, etc.).
-   - Abstracted behind `VoiceProvider` interface with graceful fallback.
-4. **Corporate Dual-Control Authorization & Passkeys**:
-   - Maker/Checker separation of duties.
-   - High-risk payments require platform biometric verification (TouchID / FaceID / Windows Hello) via WebAuthn.
-5. **Immutable Cryptographic Audit Ledger**:
-   - Every sensitive event (`PAYMENT_CREATED`, `RISK_ASSESSED`, `AI_EXPLANATION_GENERATED`, `STEP_UP_AUTH_REQUIRED`, `PAYMENT_APPROVED`) is chained with a SHA-256 hash of the preceding block.
+### Core Fintech Principles:
+1. **AI can investigate & recommend** — Generative AI models reason across disparate logs.
+2. **Deterministic systems verify** — Execution of state repairs is gated behind strict code-based invariant checks (Payment ID, Amount exact match, Gateway Captured status, cryptographic signatures, idempotency, lack of duplicate actions).
+3. **AI never independently moves money** — Financial movements remain protected; only verified state synchronization (e.g. `UNPAID` → `PAID` or queueing refund workflows) is supported with human authorization.
+4. **Every action is auditable** — All transitions are timestamped, actor-tagged, and cryptographically signed.
 
 ---
 
-## 🛠️ Quickstart Guide
+## 🚀 5 Built-in Judge Demo Scenarios
 
-### 1. Configure Environment Variables
+| # | Scenario | Discrepancy | AI Root Cause | Safe Resolution |
+|---|---|---|---|---|
+| **1** | **Payment Success, Order Unpaid** *(Signature)* | Bank: `DEBITED` ✅<br>Gateway: `CAPTURED` ✅<br>Webhook: `FAILED HTTP 500` ❌<br>Merchant DB: `UNPAID` ❌ | Webhook Delivery Timeout | Deterministically verify & **MARK ORDER AS PAID** |
+| **2** | **Duplicate Payment** | 2 Captures for single order ID (Customer retried) | Duplicate Checkout Session | Identify orphaned capture & **QUEUE REFUND WORKFLOW** |
+| **3** | **Payment Failed, Order Paid** *(Critical)* | Bank & Gateway: `FAILED/DECLINED` ❌<br>Merchant DB: `PAID` ❌ | Severe Merchant Backend Parser Desync (Phantom Credit) | **ESCALATE TO SECURITY/OPS** *(Auto-repair blocked)* |
+| **4** | **Refund Mismatch** | Gateway: `REFUNDED` ✅<br>Merchant DB: Missing refund record | 404 on Merchant Refund Webhook Endpoint | Deterministically synchronize order to **REFUNDED** |
+| **5** | **Delayed Webhook** | Gateway: `CAPTURED` ✅<br>Webhook: Queued in transit pipeline | Transient Gateway Dispatch Lag | **WAIT & MONITOR** *(Prevent premature state mutation)* |
+
+---
+
+## 🎙️ Multilingual Voice AI Support
+
+Supports real-time speech-to-text, wave visualization, step-by-step investigation stages, and natural language spoken responses across:
+- 🇮🇳 **Tamil** (*“உங்கள் ₹12,499 payment successfully captured ஆகியுள்ளது...”*)
+- 🇮🇳 **Tanglish** (*“Unga ₹12,499 payment capture aayirukku. Webhook error naala order update aagala...”*)
+- 🌐 **English** (*“Your payment of ₹12,499 was successfully captured...”*)
+- 🇮🇳 **Hindi** (*“आपका ₹12,499 का भुगतान सफल रहा...”*)
+
+---
+
+## 🛠️ Quick Start & Running Locally
+
+### 1. Prerequisites
+- Node.js >= 18
+- npm
+
+### 2. Installation
+```bash
+git clone <repo-url>
+cd payment-truth-ai
+npm install
+```
+
+### 3. Environment Variables (Optional)
 Copy `.env.example` to `.env`:
 ```bash
 cp .env.example .env
 ```
-Add your credentials:
-```env
-PORT=3000
-GEMINI_API_KEY=your_gemini_api_key_here
-SARVAM_API_KEY=your_sarvam_api_key_here
-DATABASE_URL=postgresql://postgres:postgrespassword@localhost:5432/deepaudit
-```
-*(Note: If keys are omitted, the platform runs seamlessly with audit-grade verified deterministic fallbacks).*
+*(Deterministic fallback models are built-in for instant offline judging without external API keys).*
 
-### 2. Build All Packages and Applications
+### 4. Build & Run
 ```bash
+# Build shared types, API backend, and Angular frontend
 npm run build:all
-```
-Or individually:
-```bash
-npm run build:packages   # Builds shared-types, language, risk-engine, voice, ai-agent
-npm run build:api        # Builds Node.js backend
-npm run build:web        # Builds Angular frontend
-```
 
-### 3. Start Backend & Frontend
+# Run Frontend Web App (Angular)
+npm run start:web
 
-#### Start API Server (Port 3000):
-```bash
+# Run Backend API Service (Port 3000)
 npm run start:api
 ```
 
-#### Start Frontend Dev Server (Port 4200):
-```bash
-npm run start:web
-```
-Open [http://localhost:4200](http://localhost:4200) in your browser.
+Open `http://localhost:4200` in your browser.
 
 ---
 
-## 🐳 Running with Docker Compose
+## 🛡️ API Endpoints Summary
 
-To run the entire stack (PostgreSQL + API + Web):
-```bash
-docker compose -f infrastructure/docker-compose.yml up --build
-```
-
----
-
-## 🛡️ Security & Production Highlights
-- **Strict TypeScript Strict Mode** across all packages.
-- **Dependency Injection & Inversion of Control** in backend services.
-- **Provider Abstraction** for payment rails (Razorpay Adapter, Mock Adapter) and voice engines (Sarvam, WebSpeech).
-- **Zero Client-Side Keys**.
+- `GET /api/incidents` — List all payment incidents
+- `GET /api/incidents/:id` — Get full multi-system matrix & timeline
+- `POST /api/incidents/investigate` — Process complaint via AI & correlate evidence
+- `POST /api/incidents/:id/verify` — Run deterministic verification checks
+- `POST /api/incidents/:id/repair` — Execute authorized safe state repair
+- `POST /api/incidents/simulate/:scenarioId` — Trigger any of the 5 demo scenarios
+- `GET /api/truth/lookup?q=...` — Cross-system ledger search
+- `GET /api/truth/metrics` — Live system health score (98.4%) & incident counters
+- `GET /api/truth/audit` — Immutable compliance audit trail

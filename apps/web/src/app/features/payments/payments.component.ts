@@ -3,25 +3,31 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PaymentsService } from '../../core/services/payments.service';
 import { RiskService } from '../../core/services/risk.service';
-import { VoiceService } from '../../core/services/voice.service';
 import { CreatePaymentComponent } from './create-payment/create-payment.component';
 import { RiskExplanationComponent } from '../risk/risk-explanation/risk-explanation.component';
 import { StepUpAuthComponent } from '../authorization/step-up-auth/step-up-auth.component';
+import { PaymentTruthDrawerComponent } from './payment-truth-drawer/payment-truth-drawer.component';
 import { Payment } from '@deepaudit/shared-types';
 
 @Component({
   selector: 'app-payments',
   standalone: true,
-  imports: [CommonModule, FormsModule, CreatePaymentComponent, RiskExplanationComponent, StepUpAuthComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    CreatePaymentComponent,
+    RiskExplanationComponent,
+    StepUpAuthComponent,
+    PaymentTruthDrawerComponent
+  ],
   template: `
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-7">
       <div>
         <div class="flex items-center gap-2 mb-1">
-          <span class="text-lg">💳</span>
           <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Corporate Payments Ledger</h1>
         </div>
-        <p class="text-sm text-slate-500">Corporate disbursements, real-time deterministic fraud scores, and dual-control status.</p>
+        <p class="text-sm text-slate-500">Real-time corporate disbursements, fraud scoring, and dual-control status.</p>
       </div>
 
       <div class="mt-4 sm:mt-0 flex items-center gap-2.5">
@@ -31,37 +37,37 @@ import { Payment } from '@deepaudit/shared-types';
           <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
           </svg>
-          <span>Initiate Payment (Maker)</span>
-        </button>
-
-        <button (click)="askAgent()"
-                class="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-xl text-indigo-700 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 transition-all shadow-sm">
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3Z"/>
-          </svg>
-          <span>Ask Dhwani AI</span>
+          <span>Initiate Payment</span>
         </button>
       </div>
     </div>
 
     <!-- Summary KPI cards -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <!-- 1. Total Corporate Volume (Informational) -->
       <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Total Corporate Volume</p>
-        <p class="text-2xl font-extrabold text-slate-900">{{ totalVolume | currency:'INR':'symbol':'1.0-0' }}</p>
+        <p class="text-2xl font-extrabold text-slate-900 tabular-nums">{{ totalVolume | currency:'INR':'symbol':'1.0-0' }}</p>
         <p class="text-xs text-emerald-600 font-semibold mt-1">↑ +14.2% verified this month</p>
       </div>
 
+      <!-- 2. Active Rail Health (Informational) -->
       <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Active Rail Health</p>
         <p class="text-2xl font-extrabold text-emerald-600">99.2%</p>
         <p class="text-xs text-slate-500 mt-1">Razorpay Enterprise & Banking Rails</p>
       </div>
 
-      <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
-        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Risk Hold & Step-Up</p>
-        <p class="text-2xl font-extrabold text-amber-600">{{ flaggedCount }} transfers</p>
-        <p class="text-xs text-slate-500 mt-1">Awaiting Passkey biometric verify</p>
+      <!-- 3. Risk Hold & Step-Up (Action Required / Restrained Enterprise Style) -->
+      <div class="bg-white rounded-2xl p-5 border border-slate-100 border-l-4 border-l-amber-500 shadow-sm">
+        <div class="flex items-center justify-between mb-1">
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Risk Hold & Step-Up</p>
+          <span class="text-[9px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 uppercase tracking-wider">
+            Action Required
+          </span>
+        </div>
+        <p class="text-2xl font-extrabold text-amber-700">{{ flaggedCount }} transfers</p>
+        <p class="text-xs text-slate-500 mt-1">Awaiting Passkey biometric verification</p>
       </div>
     </div>
 
@@ -73,8 +79,8 @@ import { Payment } from '@deepaudit/shared-types';
             <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
           </svg>
           <input type="text" [(ngModel)]="searchQuery"
-                 placeholder="Search by payee, TXN reference, city…"
-                 class="w-full pl-10 pr-4 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-blue-400 bg-slate-50"/>
+                 placeholder="Search by recipient, TXN reference, city…"
+                 class="w-full pl-10 pr-4 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-indigo-400 bg-slate-50/70"/>
         </div>
       </div>
 
@@ -84,6 +90,7 @@ import { Payment } from '@deepaudit/shared-types';
           <option value="SUCCESS">Completed (Success)</option>
           <option value="STEP_UP_REQUIRED">Step-Up Required</option>
           <option value="PENDING_APPROVAL">Pending Approval</option>
+          <option value="PROCESSING">Processing / Desync</option>
           <option value="FLAGGED_HIGH_RISK">Flagged High Risk</option>
         </select>
 
@@ -101,33 +108,47 @@ import { Payment } from '@deepaudit/shared-types';
     <div class="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm">
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-slate-100 text-left">
-          <thead class="bg-slate-50">
+          <thead class="bg-slate-50/80">
             <tr class="text-[10px] uppercase text-slate-500 font-bold tracking-wider">
               <th class="py-3.5 px-5">Reference</th>
-              <th class="py-3.5 px-4">Beneficiary</th>
-              <th class="py-3.5 px-4">Amount</th>
+              <th class="py-3.5 px-4">Recipient</th>
+              <th class="py-3.5 px-4 text-right">Amount</th>
               <th class="py-3.5 px-4">Method & Gateway</th>
               <th class="py-3.5 px-4">Fraud Risk Score</th>
               <th class="py-3.5 px-4">Status</th>
-              <th class="py-3.5 px-4 text-right">Actions</th>
+              <th class="py-3.5 px-5 text-right">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100 text-xs">
             <tr *ngFor="let p of filteredPayments" class="hover:bg-slate-50/70 transition-colors">
-              <td class="py-3.5 px-5 font-mono text-[11px] text-slate-700 font-bold">
-                {{ p.referenceNumber }}
+              
+              <!-- 1. Reference (Monospace System Identifier) -->
+              <td class="py-3.5 px-5">
+                <span class="font-mono text-xs text-slate-500 font-medium tracking-tight">
+                  {{ p.referenceNumber }}
+                </span>
               </td>
+
+              <!-- 2. Recipient -->
               <td class="py-3.5 px-4">
                 <p class="font-bold text-slate-900">{{ p.beneficiary.name }}</p>
                 <p class="text-[10px] text-slate-400">{{ p.beneficiary.bankName }} ({{ p.beneficiary.category }})</p>
               </td>
-              <td class="py-3.5 px-4">
-                <span class="font-extrabold text-sm text-slate-900">{{ p.amount | currency:'INR':'symbol':'1.0-0' }}</span>
+
+              <!-- 3. Amount (Strictly Right Aligned) -->
+              <td class="py-3.5 px-4 text-right">
+                <span class="font-extrabold text-sm text-slate-900 tabular-nums">
+                  {{ p.amount | currency:'INR':'symbol':'1.0-0' }}
+                </span>
               </td>
+
+              <!-- 4. Method & Gateway -->
               <td class="py-3.5 px-4">
                 <span class="font-semibold text-slate-800">{{ p.method }}</span>
                 <span class="text-[10px] text-slate-400 block">{{ p.gateway }}</span>
               </td>
+
+              <!-- 5. Fraud Risk Score -->
               <td class="py-3.5 px-4">
                 <div class="flex items-center gap-2">
                   <span class="px-2 py-0.5 rounded-full text-[10px] font-bold"
@@ -136,22 +157,45 @@ import { Payment } from '@deepaudit/shared-types';
                   </span>
                 </div>
               </td>
+
+              <!-- 6. Status -->
               <td class="py-3.5 px-4">
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider"
                       [style]="statusBadgeStyle(p.status)">
                   {{ p.status.replace('_', ' ') }}
                 </span>
               </td>
-              <td class="py-3.5 px-4 text-right space-x-1">
-                <button (click)="explainPayment(p)"
-                        class="px-2.5 py-1 text-[11px] font-bold text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition-colors">
-                  Explain 💡
-                </button>
+
+              <!-- 7. Actions (Context-Aware) -->
+              <td class="py-3.5 px-5 text-right">
+                
+                <!-- A. High Priority Passkey Biometric Action -->
                 <button *ngIf="p.status === 'STEP_UP_REQUIRED'"
                         (click)="selectedStepUp = p"
-                        class="px-2.5 py-1 text-[11px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-colors">
-                  Passkey 🔑
+                        class="px-3 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-all inline-flex items-center gap-1.5">
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M7.864 4.243A7.5 7.5 0 0 1 19.5 10.5c0 2.92-.556 5.709-1.568 8.268M5.742 6.364A7.465 7.465 0 0 0 4.5 10.5a7.464 7.464 0 0 1-1.15 3.993m1.989 3.559A11.209 11.209 0 0 0 8.25 10.5a3.75 3.75 0 1 1 7.5 0c0 .527-.021 1.049-.064 1.565M12 10.5a14.94 14.94 0 0 1-3.6 9.75m6.633-4.596a18.666 18.666 0 0 1-2.485 5.33"/>
+                  </svg>
+                  <span>Verify Passkey</span>
                 </button>
+
+                <!-- B. Payment Truth Anomaly / Inconsistency Action -->
+                <button *ngIf="isPaymentInconsistent(p) && p.status !== 'STEP_UP_REQUIRED'"
+                        (click)="selectedInvestigatePayment = p"
+                        class="px-2.5 py-1 text-xs font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200/80 rounded-lg transition-colors inline-flex items-center gap-1.5">
+                  <svg class="w-3.5 h-3.5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/>
+                  </svg>
+                  <span>Investigate</span>
+                </button>
+
+                <!-- C. Normal Subtle Details Action -->
+                <button *ngIf="!isPaymentInconsistent(p) && p.status !== 'STEP_UP_REQUIRED'"
+                        (click)="viewDetails(p)"
+                        class="px-2.5 py-1 text-xs font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors">
+                  Details
+                </button>
+
               </td>
             </tr>
           </tbody>
@@ -159,10 +203,11 @@ import { Payment } from '@deepaudit/shared-types';
       </div>
     </div>
 
-    <!-- Modals -->
+    <!-- Modals & Drawers -->
     <app-create-payment *ngIf="showCreateModal" (close)="showCreateModal = false"></app-create-payment>
     <app-risk-explanation *ngIf="selectedExplainPayment" [payment]="selectedExplainPayment" (close)="selectedExplainPayment = null"></app-risk-explanation>
     <app-step-up-auth *ngIf="selectedStepUp" [payment]="selectedStepUp" (close)="selectedStepUp = null" (completed)="onStepUpDone()"></app-step-up-auth>
+    <app-payment-truth-drawer *ngIf="selectedInvestigatePayment" [payment]="selectedInvestigatePayment" (close)="selectedInvestigatePayment = null" (resolved)="onIncidentResolved($event)"></app-payment-truth-drawer>
   `,
   styles: [`:host { display:block; }`]
 })
@@ -174,12 +219,16 @@ export class PaymentsComponent {
   showCreateModal = false;
   selectedExplainPayment: Payment | null = null;
   selectedStepUp: Payment | null = null;
+  selectedInvestigatePayment: Payment | null = null;
 
   constructor(
     public paymentsService: PaymentsService,
-    private riskService: RiskService,
-    private voice: VoiceService
-  ) {}
+    private riskService: RiskService
+  ) { }
+
+  isPaymentInconsistent(p: Payment): boolean {
+    return !!p.hasInconsistency || p.referenceNumber === 'TXN-9283749284' || p.status === 'PROCESSING' || !!p.incidentId;
+  }
 
   get filteredPayments(): Payment[] {
     return this.paymentsService.payments().filter(p => {
@@ -214,16 +263,16 @@ export class PaymentsComponent {
     return 'background:#dcfce7;color:#166534;';
   }
 
-  explainPayment(payment: Payment) {
+  viewDetails(payment: Payment) {
     this.selectedExplainPayment = payment;
     this.riskService.explainRisk(payment.id).subscribe();
   }
 
-  askAgent() {
-    this.voice.setDrawerOpen(true);
+  onStepUpDone() {
+    this.paymentsService.fetchPayments();
   }
 
-  onStepUpDone() {
+  onIncidentResolved(payment: Payment) {
     this.paymentsService.fetchPayments();
   }
 }

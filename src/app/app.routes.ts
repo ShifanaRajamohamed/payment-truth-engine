@@ -16,51 +16,64 @@ export const routes: Routes = [
     loadComponent: () => import('./layout/app-shell/app-shell.component').then(m => m.AppShellComponent),
     children: [
       {
-        path: 'home',
-        loadComponent: () => import('./features/home/home.component').then(m => m.HomeComponent)
+        path: 'dashboard',
+        loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent)
       },
       {
-        path: 'payments',
-        loadComponent: () => import('./features/payments/payments.component').then(m => m.PaymentsComponent)
+        path: 'incidents',
+        loadComponent: () => import('./features/incidents/incidents-list.component').then(m => m.IncidentsListComponent)
       },
       {
-        path: 'customers',
-        loadComponent: () => import('./features/customers/customers.component').then(m => m.CustomersComponent)
+        path: 'incidents/:id',
+        loadComponent: () => import('./features/incidents/incident-detail.component').then(m => m.IncidentDetailComponent)
       },
       {
-        path: 'map',
-        loadComponent: () => import('./features/map/map.component').then(m => m.MapComponent)
+        path: 'voice-resolver',
+        loadComponent: () => import('./features/voice-resolver/voice-resolver.component').then(m => m.VoiceResolverComponent)
       },
       {
-        path: 'regions',
-        loadComponent: () => import('./features/regions/regions.component').then(m => m.RegionsComponent)
+        path: 'simulation-lab',
+        loadComponent: () => import('./features/simulation-lab/simulation-lab.component').then(m => m.SimulationLabComponent)
       },
       {
-        path: 'opportunities',
-        loadComponent: () => import('./features/opportunities/opportunities.component').then(m => m.OpportunitiesComponent)
+        path: 'inspector',
+        loadComponent: () => import('./features/inspector/inspector.component').then(m => m.InspectorComponent)
       },
       {
-        path: 'decision-lab',
-        loadComponent: () => import('./features/decision-lab/decision-lab.component').then(m => m.DecisionLabComponent)
+        path: 'system-graph',
+        loadComponent: () => import('./features/system-graph/system-graph.component').then(m => m.SystemGraphComponent)
+      },
+      {
+        path: 'timeline',
+        loadComponent: () => import('./features/timeline/timeline-view.component').then(m => m.TimelineViewComponent)
+      },
+      {
+        path: 'audit',
+        loadComponent: () => import('./features/audit/audit-trail.component').then(m => m.AuditTrailComponent)
       },
       {
         path: 'settings',
         loadComponent: () => import('./features/settings/settings.component').then(m => m.SettingsComponent)
       },
       {
+        path: 'home',
+        redirectTo: 'dashboard',
+        pathMatch: 'full'
+      },
+      {
         path: '',
-        redirectTo: 'home',
+        redirectTo: 'dashboard',
         pathMatch: 'full'
       }
     ]
   },
   {
     path: '',
-    redirectTo: 'login',
+    redirectTo: 'app/dashboard',
     pathMatch: 'full'
   },
   {
     path: '**',
-    redirectTo: 'login'
+    redirectTo: 'app/dashboard'
   }
 ];

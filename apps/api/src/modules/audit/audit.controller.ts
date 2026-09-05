@@ -12,7 +12,7 @@ export class AuditController {
   };
 
   getByTargetId = (req: Request, res: Response) => {
-    const { targetId } = req.params;
+    const targetId = req.params.targetId as string;
     const events = this.auditService.getByTargetId(targetId);
     return ApiResponse.success(res, events);
   };

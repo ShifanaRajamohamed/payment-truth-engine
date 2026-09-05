@@ -202,7 +202,39 @@ export class PaymentsService {
       { id: 'pay_TX9283749281', ref: 'TXN-9283749281', ben: this.beneficiaries[0], amount: 154000, method: 'NEFT' as const, status: 'SUCCESS' as const, region: 'Maharashtra', minsAgo: 8 },
       { id: 'pay_TX9283749282', ref: 'TXN-9283749282', ben: this.beneficiaries[1], amount: 89000, method: 'RTGS' as const, status: 'SUCCESS' as const, region: 'Karnataka', minsAgo: 25 },
       { id: 'pay_TX9283749283', ref: 'TXN-9283749283', ben: this.beneficiaries[2], amount: 745000, method: 'RTGS' as const, status: 'STEP_UP_REQUIRED' as const, region: 'Tamil Nadu', minsAgo: 45 },
-      { id: 'pay_TX9283749284', ref: 'TXN-9283749284', ben: this.beneficiaries[3], amount: 45000, method: 'UPI' as const, status: 'SUCCESS' as const, region: 'Gujarat', minsAgo: 75 },
+      {
+        id: 'pay_TX9283749284',
+        ref: 'TXN-9283749284',
+        ben: this.beneficiaries[3],
+        amount: 45000,
+        method: 'UPI' as const,
+        status: 'PROCESSING' as const,
+        region: 'Gujarat',
+        minsAgo: 75,
+        hasInconsistency: true,
+        incidentId: 'INC-2026-9921',
+        inconsistencyDetails: {
+          type: 'WEBHOOK_PROCESSING_FAILURE',
+          rootCause: 'Webhook delivery returned HTTP 500 (DB lock timeout on merchant server)',
+          bankStatus: 'DEBITED (Success)',
+          bankRef: 'HDFC-UTR-88291024',
+          gatewayStatus: 'CAPTURED',
+          gatewayRef: 'pay_Rzp99218274',
+          webhookStatus: 'FAILED (HTTP 500)',
+          webhookError: 'HTTP 500: Internal Server Error on /api/v1/webhooks/razorpay',
+          merchantStatus: 'UNPAID',
+          merchantError: 'Order state not synced due to dropped webhook',
+          finalVerdict: 'PAYMENT SUCCESSFUL — RECONCILIATION REQUIRED',
+          confidence: 98,
+          explanation: 'Funds of ₹45,000 were debited at HDFC Bank and captured by Razorpay Gateway. The webhook notification timed out at the merchant endpoint, leaving internal order records marked as UNPAID.',
+          evidence: [
+            'Bank authorization successful with UTR reference HDFC-UTR-88291024',
+            'Gateway payment state: CAPTURED with valid cryptographic signature',
+            'Webhook event payment.captured dispatched by gateway (3 retries timed out)',
+            'Merchant database order state is currently UNPAID'
+          ]
+        }
+      },
       { id: 'pay_TX9283749285', ref: 'TXN-9283749285', ben: this.beneficiaries[4], amount: 985000, method: 'Netbanking' as const, status: 'FLAGGED_HIGH_RISK' as const, region: 'Delhi NCR', minsAgo: 110 },
     ];
 
@@ -222,6 +254,9 @@ export class PaymentsService {
         status: tx.status,
         gateway: 'Razorpay Enterprise PG',
         region: tx.region,
+        hasInconsistency: (tx as any).hasInconsistency,
+        incidentId: (tx as any).incidentId,
+        inconsistencyDetails: (tx as any).inconsistencyDetails,
         createdAt: new Date(Date.now() - tx.minsAgo * 60000).toISOString(),
         updatedAt: new Date(Date.now() - tx.minsAgo * 60000).toISOString()
       };

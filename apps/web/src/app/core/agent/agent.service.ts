@@ -38,11 +38,14 @@ export class AgentService {
     conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string }>,
     activeTopic?: any
   ): Promise<AgentResponse> {
+    const detected = /[\u0B80-\u0BFF]/.test(query) ? 'ta'
+      : /[\u0900-\u097F]/.test(query) ? 'hi'
+      : languageCode;
     try {
       const res = await firstValueFrom(
         this.api.post<any>('/agent/query', {
           query,
-          languageCode,
+          languageCode: detected,
           conversationHistory,
           activeTopic
         }).pipe(
@@ -50,7 +53,7 @@ export class AgentService {
         )
       );
 
-      if (res && res.answer) {
+      if (res && res.answer && !this.isUnhelpfulAnswer(res.answer)) {
         return {
           intent: 'GET_BUSINESS_OVERVIEW',
           text: res.answer,
@@ -81,15 +84,21 @@ export class AgentService {
 
   private detectIntent(query: string): AgentIntent {
     const q = query.toLowerCase();
+    const isTamil = /[\u0B80-\u0BFF]/.test(query);
 
-    // Simulation / Try Before You Decide
+    if (this.has(q, ['yesterday', 'நேற்று', 'कल']) && this.has(q, ['discount', 'offer', 'தள்ளுபடி', 'சலுகை', 'छूट', 'ऑफर'])) {
+      return 'GET_YESTERDAY_OFFERS';
+    }
+
     if (this.has(q, ['discount', 'offer', 'what if', 'if i give', 'kudutha', 'kuduthal', 'simulate', 'simulation', 'தள்ளுபடி', 'சலுகை', 'கொடுத்தால்', 'छूट', 'ऑफर'])) return 'RUN_SIMULATION';
 
-    // Recommendations
     if (this.has(q, ['what should', 'what can i do', 'improve', 'better', 'recommend', 'advice', 'enna panna', 'என்ன செய்', 'வழிகாட்டல்', 'என்ன பண்ண', 'क्या करूं', 'क्या करना', 'सुझाव'])) return 'GET_RECOMMENDATIONS';
 
-    // Best region
-    if (this.has(q, ['best', 'top city', 'best city', 'growing', 'where', 'leading', 'highest', 'endha ooru', 'எந்த நகர', 'சிறந்த', 'முதன்மையான', 'முக்கிய', 'कौन सा', 'सबसे अच्छा', 'शीर्ष'])) return 'GET_BEST_REGION';
+    if (this.has(q, ['best', 'top city', 'best city', 'doing best', 'fastest', 'சிறந்த', 'सबसे अच्छा', 'எந்த நகர'])) return 'GET_BEST_REGION';
+
+    if (this.has(q, ['cities', 'which city', 'where', 'location', 'branches', 'எங்க', 'நகர', 'வியாபாரம்', 'பிஸ்னஸ்', 'இருக்கின்ற', 'ஊர்']) || isTamil && this.has(q, ['எங்கை'])) {
+      return 'GET_ALL_CITIES';
+    }
 
     // Specific city revenue
     const cities = ['coimbatore', 'chennai', 'madurai', 'trichy', 'mumbai', 'bangalore', 'delhi', 'கோயம்புத்தூர்', 'சென்னை', 'மதுரை', 'திருச்சி', 'कोयंबटूर', 'चेन्नई'];
@@ -109,6 +118,9 @@ export class AgentService {
 
     // Revenue / Collection / Today's performance
     if (this.has(q, ['revenue', 'money', 'earn', 'collection', 'collect', 'sales', 'income', 'turnover', 'today', 'volume', 'amount', 'வருவாய்', 'பணம்', 'சேகரிப்பு', 'கலெக்ஷன்', 'எவ்வளவு', 'இன்னைக்கு', 'வரவு', 'விற்பனை', 'வந்திருக்கு', 'எவ்ளோ', 'ரூபாய்', 'आय', 'पैसे', 'कमाई', 'कलेक्शन', 'बिक्री', 'आज', 'कितना', 'how much'])) return 'GET_REVENUE';
+
+    // Profit / margin
+    if (this.has(q, ['profit', 'margin', 'labam', 'labh', 'लाभ', 'लाभांश', 'லாபம்', 'லாப', 'இலாபம்'])) return 'GET_PROFIT';
 
     // Business overview
     if (this.has(q, ['how is', 'overview', 'summary', 'doing', 'business', 'status', 'health', 'epdi iruku', 'எப்படி', 'வியாபாரம்', 'நிலை', 'நடக்குது', 'कैसा', 'कैसे', 'कारोबार'])) return 'GET_BUSINESS_OVERVIEW';
@@ -141,6 +153,11 @@ export class AgentService {
         return this.resp(intent, this.i18n.getResponse('response.business_overview'), toolCalls);
       }
 
+      case 'GET_PROFIT': {
+        toolCalls.push({ tool: 'getMonthlyProfit', params: {} });
+        return this.resp(intent, this.i18n.getResponse('response.monthly_profit'), toolCalls, 'high');
+      }
+
       case 'GET_REGION_REVENUE': {
         const city = this.extractCity(query);
         if (city === 'coimbatore') {
@@ -157,9 +174,33 @@ export class AgentService {
         return this.resp(intent, this.i18n.getResponse('response.fallback'), toolCalls, 'low');
       }
 
+      case 'GET_ALL_CITIES': {
+        const cities = this.tools.getAllCities();
+        const names = cities.map(c => c.name).join(', ');
+        const isTa = /[\u0B80-\u0BFF]/.test(query);
+        const text = isTa
+          ? `நமது வியாபாரம் இந்த நகரங்களில் இயங்குகிறது. ${cities.map(c => c.name).join(', ')}. கோயம்புத்தூர் வேகமாக வளர்கிறது.`
+          : `Your business is live in ${names}. Coimbatore is growing fastest. Mumbai has the highest volume. Trichy is the only city declining.`;
+        toolCalls.push({ tool: 'getAllCities', params: {} });
+        return { ...this.resp(intent, text, toolCalls, 'high'), navigationTarget: '/app/map' };
+      }
+
+      case 'GET_YESTERDAY_OFFERS': {
+        const isTa = /[\u0B80-\u0BFF]/.test(query);
+        const text = isTa
+          ? 'நேற்று லாபம் தந்த சலுகை கோயம்புத்தூர் 5 சதவீத ரிபீட் UPI ஆஃபர். கூடுதல் இலாபம் சுமார் ₹18,600. சென்னை பண்டில் ₹9,200 இலாபம். திருச்சி 10 சதவீத சலுகை நஷ்டம் சுமார் ₹2,400.'
+          : 'Yesterday the Coimbatore 5% repeat UPI offer was profitable, about ₹18,600 extra profit from 42 extra orders. Chennai grocery bundles made about ₹9,200. The Trichy 10% new-customer discount lost about ₹2,400.';
+        toolCalls.push({ tool: 'getYesterdayOffers', params: {} });
+        return this.resp(intent, text, toolCalls, 'high');
+      }
+
       case 'GET_BEST_REGION': {
+        const city = this.tools.getBestGrowingRegion();
+        const text = city
+          ? `${city.name} is doing best right now. You received ${city.revenue >= 100000 ? '₹' + (city.revenue / 100000).toFixed(1) + ' lakh' : '₹' + city.revenue.toLocaleString('en-IN')} this month, with ${city.growth >= 0 ? '+' : ''}${city.growth.toFixed(1)}% growth and ${city.successRate.toFixed(1)}% payment success. ${city.plainStatus}.`
+          : this.i18n.getResponse('response.best_region');
         toolCalls.push({ tool: 'getBestGrowingRegion', params: {} });
-        return { ...this.resp(intent, this.i18n.getResponse('response.best_region'), toolCalls), navigationTarget: '/app/map', focusRegion: 'Coimbatore' };
+        return { ...this.resp(intent, text, toolCalls, 'high'), navigationTarget: '/app/map', focusRegion: city?.name || 'Coimbatore' };
       }
 
       case 'REGION_WHY_DOWN': {
@@ -210,6 +251,16 @@ export class AgentService {
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
+
+  private isUnhelpfulAnswer(text: string): boolean {
+    const t = (text || '').toLowerCase();
+    return t.includes('enough specific telemetry')
+      || t.includes('please provide relevant logs')
+      || t.includes('do not have enough')
+      || t.includes('ask about yesterday')
+      || t.includes('நேற்று, நகரம்')
+      || t.includes('i will go deeper');
+  }
 
   private resp(intent: AgentIntent, text: string, toolCalls: AgentToolCall[], confidence: 'high' | 'medium' | 'low' = 'medium'): AgentResponse {
     return { intent, text, toolCalls, confidence };

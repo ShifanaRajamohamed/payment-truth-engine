@@ -55,6 +55,7 @@ export const hi: Record<string, string> = {
   'simple.advice.label': 'आप कर सकते हैं',
 
   // ── Quick suggestions ─────────────────────────────────────────────────────
+  'suggestion.yesterday_revenue': 'कल का राजस्व कितना था?',
   'suggestion.coimbatore_revenue': 'कोयंबटूर कैसा चल रहा है?',
   'suggestion.routing_opportunities': 'मुझे क्या करना चाहिए?',
   'suggestion.upi_vs_card': 'कौन सा payment तरीका बेहतर है?',
@@ -84,6 +85,8 @@ export const hi: Record<string, string> = {
     'आपका सवाल समझ गया। आपकी स्क्रीन पर संबंधित जानकारी दिखा रहा हूं।',
   'response.business_overview':
     'आपका व्यवसाय अच्छा चल रहा है। इस महीने ₹12.4 लाख मिले — पहले से 18% ज्यादा। 2,841 ऑर्डर आए हैं, ज्यादातर भुगतान सफलतापूर्वक हो रहे हैं।',
+  'response.monthly_profit':
+    'इस महीने आपको ₹12.4 लाख राजस्व पर ₹2,72,800 का लाभ हुआ, 22% मार्जिन। कोयंबटूर ₹1,80,400 के साथ सबसे अधिक लाभदायक है।',
   'response.trichy.down':
     'त्रिची में इस हफ्ते थोड़े कम भुगतान आए — पिछले हफ्ते से 8% कम। नए ग्राहक कम आ रहे हैं यही मुख्य कारण है। कोयंबटूर और चेन्नई अच्छे से बढ़ रहे हैं।',
   'response.best_region':

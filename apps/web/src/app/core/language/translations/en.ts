@@ -64,6 +64,7 @@ export const en: Record<string, string> = {
   'metric.explain.repeat': '{{value}} customers came back to buy again.',
 
   // ── Quick suggestions ─────────────────────────────────────────────────────
+  'suggestion.yesterday_revenue': 'What was yesterday\'s revenue?',
   'suggestion.coimbatore_revenue': 'How is Coimbatore doing?',
   'suggestion.routing_opportunities': 'What can I do to improve?',
   'suggestion.upi_vs_card': 'Which payment method is working best?',
@@ -93,6 +94,8 @@ export const en: Record<string, string> = {
     'I understand your question. Let me show you the relevant information on your screen.',
   'response.business_overview':
     'Your business is doing well overall. You received ₹12.4 lakh this month — that is 18% more than last month. You have 2,841 orders and most payments are going through successfully.',
+  'response.monthly_profit':
+    'This month you earned a profit of ₹2,72,800 on ₹12.4 lakh revenue, at a 22% margin. Coimbatore is the most profitable region with ₹1,80,400.',
   'response.trichy.down':
     'Trichy had fewer payments this week — about 8% less than last week. The main reason seems to be fewer new customers visiting. Coimbatore and Chennai are growing well to make up for it.',
   'response.best_region':

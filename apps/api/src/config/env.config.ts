@@ -41,5 +41,11 @@ export const envConfig = {
   get sarvamApiKey(): string { loadEnvFile(); return process.env.SARVAM_API_KEY || ''; },
   get demoPassword(): string { return process.env.DEMO_PASSWORD || ''; },
   get databaseUrl(): string { return process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/deepaudit'; },
-  get jwtSecret(): string { return process.env.JWT_SECRET || 'deepaudit_dev_secret_key_change_in_production'; }
+  get jwtSecret(): string {
+    const secret = process.env.JWT_SECRET;
+    if (!secret && process.env.NODE_ENV === 'production') {
+      throw new Error('JWT_SECRET must be set in production.');
+    }
+    return secret || 'local-development-only-jwt-secret';
+  }
 };

@@ -104,7 +104,108 @@ import { PaymentIncident, ScenarioType } from '@deepaudit/shared-types';
           </div>
           <p class="text-[10px] text-slate-400 mt-1">Immutable audit logging verified</p>
         </div>
+      <div
+  (click)="router.navigate(['/app/incidents/resolver'])"
+  (keydown.enter)="router.navigate(['/app/incidents/resolver'])"
+  (keydown.space)="$event.preventDefault(); router.navigate(['/app/incidents/resolver'])"
+  class="group relative flex flex-col justify-between p-4 rounded-2xl bg-slate-900/60 border border-slate-800 backdrop-blur-sm
+         cursor-pointer transition-all duration-150 ease-in-out
+         hover:border-slate-700 hover:bg-slate-900/80
+         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+  tabindex="0"
+  role="button"
+  aria-label="Payment Incident Resolver – Investigate payment issues like technical incidents"
+>
+  <div>
+    <div class="flex items-center gap-2.5">
+      <div class="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-800 bg-slate-950/50 text-indigo-400 group-hover:border-slate-700 transition-colors">
+        <svg
+          class="w-4 h-4"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          <circle cx="12" cy="11" r="2.5" />
+          <path d="m14 13 2.5 2.5" />
+        </svg>
       </div>
+
+      <h3 class="text-sm font-semibold tracking-tight text-white group-hover:text-indigo-200 transition-colors">
+        Payment Incident Resolver
+      </h3>
+    </div>
+
+    <p class="mt-2.5 text-xs leading-relaxed text-slate-400">
+      Investigate payment issues like technical incidents. Gather evidence, identify the root cause, and safely resolve or escalate the issue.
+    </p>
+  </div>
+
+  <div class="mt-4 flex flex-wrap gap-1.5 pt-1">
+    <span class="inline-flex items-center rounded border border-slate-800 bg-slate-950/60 px-2 py-0.5 text-[11px] font-medium text-slate-300">
+      Investigate
+    </span>
+    <span class="inline-flex items-center rounded border border-slate-800 bg-slate-950/60 px-2 py-0.5 text-[11px] font-medium text-slate-300">
+      Verify
+    </span>
+    <span class="inline-flex items-center rounded border border-slate-800 bg-slate-950/60 px-2 py-0.5 text-[11px] font-medium text-slate-300">
+      Resolve
+    </span>
+    <span class="inline-flex items-center rounded border border-slate-800 bg-slate-950/60 px-2 py-0.5 text-[11px] font-medium text-slate-300">
+      Escalate
+    </span>
+  </div>
+</div>
+
+      <!-- Payment Truth Capability Card -->
+      <div
+        (click)="router.navigate(['/app/payment-truth'])"
+        (keydown.enter)="router.navigate(['/app/payment-truth'])"
+        (keydown.space)="$event.preventDefault(); router.navigate(['/app/payment-truth'])"
+        class="group relative flex flex-col justify-between p-4 rounded-2xl bg-slate-900/60 border border-slate-800 backdrop-blur-sm cursor-pointer transition-all duration-150 ease-in-out hover:border-slate-700 hover:bg-slate-900/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+        tabindex="0"
+        role="button"
+        aria-label="Payment Truth – See what actually happened to a transaction"
+      >
+        <div>
+          <div class="flex items-center gap-2.5">
+            <div class="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-800 bg-slate-950/50 text-indigo-400 group-hover:border-slate-700 transition-colors">
+              <svg
+                class="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" />
+                <path d="m9 12 2 2 4-4" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-sm font-semibold tracking-tight text-white group-hover:text-indigo-200 transition-colors">
+                Payment Truth
+              </h3>
+              <p class="text-[10px] font-medium text-slate-500 mt-0.5">Autonomous ledger &amp; state reconciliation</p>
+            </div>
+          </div>
+          <p class="mt-2.5 text-xs leading-relaxed text-slate-400">
+            Reconcile conflicting records across Bank, Gateway, and Merchant DB. Cryptographically verify and auto-repair dropped webhook states.
+          </p>
+        </div>
+        <div class="mt-4 flex flex-wrap gap-1.5 pt-1">
+          <span class="inline-flex items-center rounded border border-slate-800 bg-slate-950/60 px-2 py-0.5 text-[11px] font-medium text-slate-300">Timeline Sync</span>
+          <span class="inline-flex items-center rounded border border-slate-800 bg-slate-950/60 px-2 py-0.5 text-[11px] font-medium text-slate-300">Drift Detection</span>
+          <span class="inline-flex items-center rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-400">Deterministic Gate</span>
+        </div>
+      </div>
+</div>
 
       <!-- Live Payment Truth Feed & Quick Scenario Launch -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">

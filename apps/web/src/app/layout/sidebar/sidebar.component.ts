@@ -92,6 +92,18 @@ import { AuthService } from '../../core/services/auth.service';
           <span class="text-xs font-semibold">Activity Log</span>
         </a>
 
+<!-- 5. Payment Truth -->
+        <a routerLink="/app/payment-truth" routerLinkActive="active-nav"
+           class="nav-link flex items-center gap-3 px-3 py-2 rounded-xl transition-all">
+          <svg class="w-4 h-4 flex-shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/>
+            <path d="m9 12 2 2 4-4"/>
+          </svg>
+          <span class="text-xs font-semibold">Payment Truth</span>
+          <span class="ml-auto px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+            New
+          </span>
+        </a>
         <!-- ── Section 2: Regional Analytics ─────────────────────────────── -->
         <div class="pt-4 pb-1 px-3 flex items-center gap-1.5">
           <svg class="w-3 h-3 text-cyan-400/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

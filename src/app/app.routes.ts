@@ -36,6 +36,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/simulation-lab/simulation-lab.component').then(m => m.SimulationLabComponent)
       },
       {
+        path: 'payment-truth',
+        loadComponent: () => import('./features/payment-truth/payment-truth.component').then(m => m.PaymentTruthComponent),
+        title: 'Payment Truth Engine – Dhwani Enterprise'
+      },
+      {
         path: 'inspector',
         loadComponent: () => import('./features/inspector/inspector.component').then(m => m.InspectorComponent)
       },

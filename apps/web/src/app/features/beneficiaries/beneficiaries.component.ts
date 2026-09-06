@@ -11,7 +11,6 @@ import { Beneficiary } from '@deepaudit/shared-types';
     <div class="mb-7 flex flex-col sm:flex-row sm:items-center sm:justify-between">
       <div>
         <div class="flex items-center gap-2 mb-1">
-          <span class="text-lg">🏢</span>
           <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Approved Beneficiaries & Payees</h1>
         </div>
         <p class="text-sm text-slate-500">Manage corporate vendors, payroll accounts, and verified payees subject to fraud cooling periods.</p>

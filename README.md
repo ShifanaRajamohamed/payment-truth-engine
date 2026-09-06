@@ -1,107 +1,255 @@
 # Payment Truth AI
 
-> **“When money is involved, everyone should see the same truth.”**
+## Dhwani — AI-Assisted Payment Incident Investigation and Deterministic Resolution
 
-**Payment Truth AI** is a production-quality, voice-first payment incident investigation and deterministic state resolution platform.
+Payment Truth AI is an Angular and Node.js platform for investigating payment incidents across a bank, payment gateway, webhook pipeline, merchant backend, and merchant database.
 
-This is **NOT** a customer-support chatbot. It is an **AI Payment Incident Resolver** that correlates payment telemetry across distributed systems (Bank, Payment Gateway, Webhook, Merchant Backend, and Merchant Database), determines the verifiable root cause, explains the truth in multiple Indian languages (Tamil, Tanglish, Hindi, English), and executes **safe state repair actions** strictly after deterministic invariant verification.
+When different systems report conflicting states for the same transaction, the platform reconstructs the available evidence, assists with incident diagnosis, and performs deterministic verification before any payment state repair is allowed.
 
----
+The AI layer can explain incidents and recommend actions, but it cannot independently modify financial records.
 
-## 🏛️ Core Architecture & Principles
+## Project Structure
 
 ```text
-VOICE / TEXT COMPLAINT
-        ↓
-INTENT & ENTITY EXTRACTION
-        ↓
-EVIDENCE COLLECTION AGENT (Bank, Gateway, Webhook, Merchant DB)
-        ↓
-CHRONOLOGICAL TIMELINE CORRELATION
-        ↓
-GEMINI AI ROOT CAUSE REASONING & VOICE EXPLANATION
-        ↓
-DETERMINISTIC VERIFICATION LAYER (Strict Invariant Rules)
-        ↓
-SAFE STATE REPAIR ENGINE (Merchant State Sync)
-        ↓
-IMMUTABLE AUDIT LOG
+apps/
+  api/                 Express API, compiled to apps/api/dist
+  web/                 Canonical Angular application
+
+packages/
+  shared-types/        Shared TypeScript contracts
+  language/            Language registry and translations
+  risk-engine/         Risk scoring rules
+  voice/               Speech provider abstractions
+  ai-agent/            AI orchestration and deterministic fallbacks
+
+docs/                  API, architecture, and risk documentation
+infrastructure/        Docker and database setup
 ```
 
-### Core Fintech Principles:
-1. **AI can investigate & recommend** — Generative AI models reason across disparate logs.
-2. **Deterministic systems verify** — Execution of state repairs is gated behind strict code-based invariant checks (Payment ID, Amount exact match, Gateway Captured status, cryptographic signatures, idempotency, lack of duplicate actions).
-3. **AI never independently moves money** — Financial movements remain protected; only verified state synchronization (e.g. `UNPAID` → `PAID` or queueing refund workflows) is supported with human authorization.
-4. **Every action is auditable** — All transitions are timestamped, actor-tagged, and cryptographically signed.
+The Angular workspace is configured in `angular.json` to build `apps/web`.
 
----
+The root `src/` directory is retained for compatibility with the earlier dashboard implementation, but it is not the active Angular entry point.
 
-## 🚀 5 Built-in Judge Demo Scenarios
+## Technology Stack
 
-| # | Scenario | Discrepancy | AI Root Cause | Safe Resolution |
-|---|---|---|---|---|
-| **1** | **Payment Success, Order Unpaid** *(Signature)* | Bank: `DEBITED` ✅<br>Gateway: `CAPTURED` ✅<br>Webhook: `FAILED HTTP 500` ❌<br>Merchant DB: `UNPAID` ❌ | Webhook Delivery Timeout | Deterministically verify & **MARK ORDER AS PAID** |
-| **2** | **Duplicate Payment** | 2 Captures for single order ID (Customer retried) | Duplicate Checkout Session | Identify orphaned capture & **QUEUE REFUND WORKFLOW** |
-| **3** | **Payment Failed, Order Paid** *(Critical)* | Bank & Gateway: `FAILED/DECLINED` ❌<br>Merchant DB: `PAID` ❌ | Severe Merchant Backend Parser Desync (Phantom Credit) | **ESCALATE TO SECURITY/OPS** *(Auto-repair blocked)* |
-| **4** | **Refund Mismatch** | Gateway: `REFUNDED` ✅<br>Merchant DB: Missing refund record | 404 on Merchant Refund Webhook Endpoint | Deterministically synchronize order to **REFUNDED** |
-| **5** | **Delayed Webhook** | Gateway: `CAPTURED` ✅<br>Webhook: Queued in transit pipeline | Transient Gateway Dispatch Lag | **WAIT & MONITOR** *(Prevent premature state mutation)* |
+* Angular
+* Node.js
+* Express.js
+* TypeScript
+* PostgreSQL
+* Docker
 
----
+## Requirements
 
-## 🎙️ Multilingual Voice AI Support
+* Node.js 18 or newer
+* npm 9 or newer
 
-Supports real-time speech-to-text, wave visualization, step-by-step investigation stages, and natural language spoken responses across:
-- 🇮🇳 **Tamil** (*“உங்கள் ₹12,499 payment successfully captured ஆகியுள்ளது...”*)
-- 🇮🇳 **Tanglish** (*“Unga ₹12,499 payment capture aayirukku. Webhook error naala order update aagala...”*)
-- 🌐 **English** (*“Your payment of ₹12,499 was successfully captured...”*)
-- 🇮🇳 **Hindi** (*“आपका ₹12,499 का भुगतान सफल रहा...”*)
+## Installation
 
----
+Install dependencies:
 
-## 🛠️ Quick Start & Running Locally
-
-### 1. Prerequisites
-- Node.js >= 18
-- npm
-
-### 2. Installation
 ```bash
-git clone <repo-url>
-cd payment-truth-ai
 npm install
 ```
 
-### 3. Environment Variables (Optional)
-Copy `.env.example` to `.env`:
+Copy the environment configuration:
+
 ```bash
 cp .env.example .env
 ```
-*(Deterministic fallback models are built-in for instant offline judging without external API keys).*
 
-### 4. Build & Run
+API keys are optional for local development because deterministic offline fallbacks are included.
+
+## Build and Validate
+
+Build all applications and packages:
+
 ```bash
-# Build shared types, API backend, and Angular frontend
 npm run build:all
+```
 
-# Run Frontend Web App (Angular)
-npm run start:web
+Run the test suite:
 
-# Run Backend API Service (Port 3000)
+```bash
+npm test -- --watch=false --browsers=ChromeHeadless
+```
+
+Run all validation checks:
+
+```bash
+npm run check
+```
+
+## Run Locally
+
+Start the API:
+
+```bash
 npm run start:api
 ```
 
-Open `http://localhost:4200` in your browser.
+The API runs at:
+
+```text
+http://localhost:3000
+```
+
+Start the Angular application in a separate terminal:
+
+```bash
+npm run start:web
+```
+
+The frontend runs at:
+
+```text
+http://localhost:4200
+```
+
+The backend health endpoint is:
+
+```text
+GET http://localhost:3000/health
+```
+
+## Payment Truth Workflow
+
+### 1. Collect Evidence
+
+The platform collects and correlates payment evidence from multiple systems, including:
+
+* Customer application
+* Payment gateway
+* Webhook pipeline
+* Merchant backend
+* Merchant database
+* Banking records
+
+### 2. Verify Deterministically
+
+Before a payment state can be repaired, the system validates:
+
+* Payment ID
+* Exact transaction amount
+* Gateway status
+* Payment signature
+* Idempotency records
+* Duplicate payment indicators
+
+### 3. Diagnose the Incident
+
+The AI layer analyzes the available evidence and helps explain:
+
+* Conflicting payment states
+* Possible causes of failure
+* Missing or delayed events
+* Recommended investigation steps
+
+AI output is advisory and does not authorize financial state changes.
+
+### 4. Authorize and Repair
+
+A payment state can only be repaired when:
+
+* Deterministic verification succeeds
+* A valid verification token is present
+* The operator is authorized
+
+### 5. Record the Outcome
+
+Every approved state change is recorded in the audit log to provide traceability for investigation and review.
+
+## AI and Deterministic Verification
+
+Payment Truth AI separates AI-assisted reasoning from financial state modification.
+
+```text
+Evidence Collection
+        |
+        v
+AI-Assisted Investigation
+        |
+        v
+Deterministic Verification
+        |
+        +-- Verification Failed --> Repair Blocked
+        |
+        +-- Verification Passed
+                    |
+                    v
+            Authorized Operator
+                    |
+                    v
+              State Repair
+                    |
+                    v
+                Audit Log
+```
+
+The core principle is:
+
+> AI can explain and recommend. Deterministic verification establishes whether a repair is allowed.
+
+## Demo Scenarios
+
+The API exposes deterministic incident simulations through:
+
+```text
+POST /api/incidents/simulate/:scenarioId
+```
+
+The available scenarios include:
+
+* Webhook failure
+* Duplicate payment
+* Phantom credit
+* Refund mismatch
+* Delayed webhook delivery
+
+For the complete API contract, see:
+
+```text
+docs/api-specification.md
+```
+
+## Dhwani
+
+Dhwani is the voice and language interaction layer of the platform.
+
+The `packages/voice` module provides abstractions for speech providers, while the `packages/language` module manages language configuration and translations.
+
+This separation allows voice and language capabilities to evolve independently from the core payment investigation and verification workflow.
+
+## Security Notes
+
+Never commit `.env` files or real credentials.
+
+Configure sensitive values through local environment variables or a deployment secret manager:
+
+```text
+JWT_SECRET
+DEMO_PASSWORD
+POSTGRES_PASSWORD
+```
+
+The mock data store is intended for local development and demonstrations. Production deployments should use persistent, access-controlled infrastructure with appropriate authentication, authorization, secret management, and audit controls.
+
+## Documentation
+
+Additional technical documentation is available in the `docs/` directory and covers:
+
+* API specifications
+* System architecture
+* Risk evaluation
+* Payment verification logic
+* Incident investigation workflows
+
+## License
+
+This project is intended for demonstration and evaluation purposes unless otherwise specified.
 
 ---
 
-## 🛡️ API Endpoints Summary
+Payment Truth AI
 
-- `GET /api/incidents` — List all payment incidents
-- `GET /api/incidents/:id` — Get full multi-system matrix & timeline
-- `POST /api/incidents/investigate` — Process complaint via AI & correlate evidence
-- `POST /api/incidents/:id/verify` — Run deterministic verification checks
-- `POST /api/incidents/:id/repair` — Execute authorized safe state repair
-- `POST /api/incidents/simulate/:scenarioId` — Trigger any of the 5 demo scenarios
-- `GET /api/truth/lookup?q=...` — Cross-system ledger search
-- `GET /api/truth/metrics` — Live system health score (98.4%) & incident counters
-- `GET /api/truth/audit` — Immutable compliance audit trail
+Dhwani — AI-assisted investigation, deterministic verification, and controlled payment state resolution.

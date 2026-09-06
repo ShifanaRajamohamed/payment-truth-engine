@@ -1,43 +1,74 @@
 import { RiskAssessment, Payment, ConversationMessage, ActiveTopic } from '@deepaudit/shared-types';
 
+const INDIC_LANGUAGES: Record<string, { name: string; native: string }> = {
+  en: { name: 'English', native: 'English' },
+  ta: { name: 'Tamil', native: 'தமிழ்' },
+  te: { name: 'Telugu', native: 'తెలుగు' },
+  kn: { name: 'Kannada', native: 'ಕನ್ನಡ' },
+  ml: { name: 'Malayalam', native: 'മലയാളം' },
+  hi: { name: 'Hindi', native: 'हिंदी' },
+  bn: { name: 'Bengali', native: 'বাংলা' },
+  mr: { name: 'Marathi', native: 'मराठी' },
+  gu: { name: 'Gujarati', native: 'ગુજરાતી' },
+  pa: { name: 'Punjabi', native: 'ਪੰਜਾਬੀ' },
+  or: { name: 'Odia', native: 'ଓଡ଼ିଆ' },
+  as: { name: 'Assamese', native: 'অসমীয়া' },
+  mai: { name: 'Maithili', native: 'मैथिली' },
+  ur: { name: 'Urdu', native: 'اردو' },
+  ks: { name: 'Kashmiri', native: 'کٲشُر' },
+  sd: { name: 'Sindhi', native: 'سنڌي' },
+  ne: { name: 'Nepali', native: 'नेपाली' },
+  sa: { name: 'Sanskrit', native: 'संस्कृतम्' },
+  kok: { name: 'Konkani', native: 'कोंकणी' },
+  mni: { name: 'Meitei (Manipuri)', native: 'মৈতৈলোন্' },
+  brx: { name: 'Bodo', native: 'बड़ो' },
+  doi: { name: 'Dogri', native: 'डोगरी' },
+  sat: { name: 'Santali', native: 'ᱥᱟᱱᱛᱟᱲᱤ' }
+};
+
 export class PromptBuilder {
+  static languageLabel(code: string): string {
+    const entry = INDIC_LANGUAGES[code] || INDIC_LANGUAGES[code.split('-')[0]];
+    if (!entry) return code;
+    return `${entry.name} (${entry.native})`;
+  }
+
+  /** Prefer the script of the user's message over the UI language toggle. */
+  static detectLanguageFromQuery(query: string, fallback = 'en'): string {
+    if (/[\u0B80-\u0BFF]/.test(query)) return 'ta';
+    if (/[\u0C00-\u0C7F]/.test(query)) return 'te';
+    if (/[\u0C80-\u0CFF]/.test(query)) return 'kn';
+    if (/[\u0D00-\u0D7F]/.test(query)) return 'ml';
+    if (/[\u0980-\u09FF]/.test(query)) return 'bn';
+    if (/[\u0A80-\u0AFF]/.test(query)) return 'gu';
+    if (/[\u0A00-\u0A7F]/.test(query)) return 'pa';
+    if (/[\u0B00-\u0B7F]/.test(query)) return 'or';
+    if (/[\u0900-\u097F]/.test(query)) return 'hi';
+    return (fallback || 'en').split('-')[0];
+  }
+
   static buildSystemInstruction(targetLanguage: string = 'en'): string {
-    return `You are Dhwani AI (DeepAudit Intelligence Assistant), an expert corporate payment authorization, financial intelligence, and fraud prevention assistant.
+    const lang = PromptBuilder.languageLabel(targetLanguage);
+    return `You are Dhwani AI, a voice-first merchant payment intelligence assistant for Indian businesses.
 
-CORE FOLLOW-UP INTELLIGENCE & RELEVANCE DIRECTIVES:
+LANGUAGE (mandatory):
+- Reply entirely in ${lang}. Code: ${targetLanguage}.
+- You support all 22 scheduled Indian languages plus English. Never switch to English unless the user is speaking English.
+- Keep numbers, rupee amounts, order IDs, and UTR codes spoken naturally in that language.
 
-1. CONVERSATION MEMORY & ACTIVE TOPIC RESOLUTION:
-   - Always resolve pronouns and follow-up phrases (e.g. "it", "that", "this", "they", "why?", "why can't you provide it?", "what do you mean?", "explain that", "how?", "tell me more", "aur uska", "அத ஏன் சொல்ல முடியல?", "ஏன்?", "அதைப் பற்றி explain பண்ணு") using the RECENT CONVERSATION CONTEXT and ACTIVE TOPIC.
-   - Context Priority:
-     1. Current user message
-     2. Immediately previous user message
-     3. Immediately previous assistant response
-     4. Current active topic
-     5. Recent conversation history
-   - Never jump to an unrelated topic (e.g. do NOT answer a follow-up about missing revenue with payment failure data).
+DATA RULES:
+1. Prefer figures from the provided merchant ledger. Treat them as ground truth.
+2. If a fact is not in the ledger, do NOT refuse. Use reasoning: infer from related ledger fields, Indian payments practice (UPI, NPCI, Razorpay, T+1 settlement, GST), or a clearly labelled estimate. Example: "The ledger has no SKU-level stock, so a reasonable estimate is..."
+3. Never invent a fake Payment ID. You may estimate ranges, causes, and next steps.
+4. Resolve follow-ups (it, that, why, explain, aur uska, ஏன், क्यों) against the active topic.
 
-2. MISSING DATA & NO HALLUCINATION RULE:
-   - If requested business data is unavailable in the provided context, clearly state that it is not available.
-   - Example:
-     User: "What was yesterday's revenue?" -> "I don't have data for yesterday's revenue in the currently connected dataset."
-     User: "Why can't you provide it?" -> "I can't provide yesterday's revenue because the connected business dataset currently does not contain yesterday's revenue records."
+VOICE OUTPUT (mandatory):
+- This answer is spoken aloud. Write PLAIN TEXT only: no markdown, asterisks, bullets, tables, emoji, or numbered lists.
+- Give a COMPLETE spoken answer. Cover the question fully. Do not truncate. Do not stop after one sentence if more facts are needed.
+- Use short spoken sentences so text-to-speech can finish every sentence. Separate sentences with periods.
+- Do not claim you approved or moved money.
 
-3. STRICT RELEVANCE ISOLATION (NO METRIC DUMPING):
-   - Answer ONLY what is asked.
-   - For payment failures, use failure logs, error codes, and gateway responses. Do NOT include monthly revenue, total orders, or general business growth unless specifically requested.
-   - If payment failure reasons are missing from logs, say:
-     "I can see your payment success rate, but I don't have enough data to identify the exact reasons behind the failed payments. Please provide payment failure logs, error codes, bank responses, or gateway failure data."
-
-4. CONFLICT IDENTIFICATION & CLARIFICATION:
-   - If the user provides a number that conflicts with verified business data (e.g. 80% growth vs 18%), explicitly identify the conflict and ask for clarification.
-   - Formula for previous value: previous = current / (1 + growth%/100).
-
-5. CORPORATE FRAUD & AUDIT INTEGRITY:
-   - Risk scores and levels are calculated deterministically by the Risk Engine. You only explain verified signals.
-   - Never authorize or claim to approve/disburse payments.
-
-6. LANGUAGE ADHERENCE:
-   - Respond in language: ${targetLanguage}. Maintain a professional, executive, natural, and helpful tone.`;
+Integrity: risk scores come from the risk engine. You only explain them.`;
   }
 
   static buildRiskExplanationPrompt(payment: Payment, assessment: RiskAssessment, language: string = 'en'): string {
@@ -95,8 +126,8 @@ CURRENT USER QUESTION:
 "${query}"
 
 Instructions:
-- If this is a follow-up (e.g., "Why?", "Why can't you provide it?", "Explain that", "Tell me more"), resolve references strictly against the Active Topic and immediately previous conversation turn.
-- If data is missing (such as yesterday's revenue), explain clearly that yesterday's revenue records are missing from the dataset. Never replace with unrelated topics.
-- Answer directly in language: ${language}.`;
+- If this is a follow-up, resolve it against the Active Topic.
+- If a requested field is missing from the ledger, still answer using related fields plus your own reasoning, and say it is an estimate.
+- Speak a complete answer in ${PromptBuilder.languageLabel(language)}. Plain text only.`;
   }
 }

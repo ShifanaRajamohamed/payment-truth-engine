@@ -15,7 +15,6 @@ import { SpeechService } from '../../core/voice/speech/speech.service';
     <!-- Header -->
     <div class="mb-7">
       <div class="flex items-center gap-2 mb-1">
-        <span class="text-lg">⚙️</span>
         <h1 class="text-2xl font-bold text-slate-900 tracking-tight">{{ i18n.t('settings.title') }}</h1>
       </div>
       <p class="text-sm text-slate-500">Configure accessibility, language, voice, and device security preferences.</p>
@@ -35,7 +34,6 @@ import { SpeechService } from '../../core/voice/speech/speech.service';
       <!-- ── Section 1: Accessibility & Display Mode ──────────────────────── -->
       <div class="bg-white rounded-2xl p-6" style="border:1px solid rgba(15,31,69,0.07);box-shadow:0 2px 8px rgba(15,31,69,0.04);">
         <div class="flex items-center gap-2 mb-1">
-          <span class="text-base">👁️</span>
           <h2 class="text-base font-bold text-slate-900">{{ i18n.t('settings.mode.section') }}</h2>
         </div>
         <p class="text-xs text-slate-500 mb-5">Choose how detailed or simple you want the screens and numbers to be.</p>
@@ -47,7 +45,6 @@ import { SpeechService } from '../../core/voice/speech/speech.service';
                     ? 'border-color:#3b82f6;background:#eff6ff;'
                     : 'border-color:#e2e8f0;background:#f8fafc;'">
             <div class="flex items-center justify-between mb-2">
-              <span class="text-xl">✨</span>
               <span *ngIf="prefs.simpleMode()" class="text-xs font-bold text-blue-600">Active</span>
             </div>
             <span class="text-sm font-bold text-slate-900 mb-1">{{ i18n.t('settings.simple_mode') }}</span>
@@ -60,7 +57,6 @@ import { SpeechService } from '../../core/voice/speech/speech.service';
                     ? 'border-color:#3b82f6;background:#eff6ff;'
                     : 'border-color:#e2e8f0;background:#f8fafc;'">
             <div class="flex items-center justify-between mb-2">
-              <span class="text-xl">📊</span>
               <span *ngIf="!prefs.simpleMode() && prefs.complexityLevel() === 'standard'" class="text-xs font-bold text-blue-600">Active</span>
             </div>
             <span class="text-sm font-bold text-slate-900 mb-1">{{ i18n.t('settings.standard_mode') }}</span>
@@ -73,7 +69,6 @@ import { SpeechService } from '../../core/voice/speech/speech.service';
                     ? 'border-color:#3b82f6;background:#eff6ff;'
                     : 'border-color:#e2e8f0;background:#f8fafc;'">
             <div class="flex items-center justify-between mb-2">
-              <span class="text-xl">🔬</span>
               <span *ngIf="!prefs.simpleMode() && prefs.complexityLevel() === 'detailed'" class="text-xs font-bold text-blue-600">Active</span>
             </div>
             <span class="text-sm font-bold text-slate-900 mb-1">{{ i18n.t('settings.detailed_mode') }}</span>

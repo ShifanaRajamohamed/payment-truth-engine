@@ -337,7 +337,7 @@ export class LoginComponent {
   ) {
     this.loginForm = this.fb.group({
       email:      ['merchant@dhwani.app', [Validators.required, Validators.email]],
-      password:   ['password123', [Validators.required, Validators.minLength(6)]],
+      password:   ['', [Validators.required, Validators.minLength(6)]],
       rememberMe: [true],
     });
   }
@@ -358,7 +358,7 @@ export class LoginComponent {
         this.router.navigate(['/app']);
       } else if (this.auth.passkeyState() === 'unsupported') {
         // Fallback directly to demo login for convenience
-        if (this.auth.login('merchant@dhwani.app', 'password123')) {
+        if (this.auth.login('merchant@dhwani.app', crypto.randomUUID())) {
           this.router.navigate(['/app']);
         }
       } else if (this.auth.passkeyState() === 'error') {
@@ -387,11 +387,11 @@ export class LoginComponent {
   }
 
   quickLogin(provider: string) {
-    this.auth.login('merchant@dhwani.app', 'password123');
+    this.auth.login('merchant@dhwani.app', crypto.randomUUID());
     this.router.navigate(['/app']);
   }
 
   onForgotPassword() {
-    alert('Please contact your system administrator or use merchant@dhwani.app / password123 to log in.');
+    alert('Please contact your system administrator to reset your password.');
   }
 }

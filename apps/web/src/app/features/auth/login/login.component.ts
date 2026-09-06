@@ -313,7 +313,7 @@ export class LoginComponent {
   ) {
     this.loginForm = this.fb.group({
       email:      ['aditya.sharma@dhwani.app', [Validators.required, Validators.email]],
-      password:   ['password123', [Validators.required, Validators.minLength(6)]],
+          password:   ['', [Validators.required, Validators.minLength(6)]],
       rememberMe: [true],
     });
   }
@@ -333,7 +333,7 @@ export class LoginComponent {
       if (ok) {
         this.router.navigate(['/app']);
       } else if (this.auth.passkeyState() === 'unsupported') {
-        if (this.auth.login('aditya.sharma@dhwani.app', 'password123')) {
+        if (this.auth.login('aditya.sharma@dhwani.app', crypto.randomUUID())) {
           this.router.navigate(['/app']);
         }
       } else if (this.auth.passkeyState() === 'error') {
@@ -357,6 +357,6 @@ export class LoginComponent {
   }
 
   onForgotPassword() {
-    alert('Please contact your Dhwani Access system administrator or use aditya.sharma@dhwani.app / password123.');
+    alert('Please contact your Dhwani Access system administrator to reset your password.');
   }
 }

@@ -52,13 +52,19 @@ export class SpeechService {
   // ── STT ───────────────────────────────────────────────────────────────────
 
   /**
-   * Speech recognition must ONLY start after user explicitly clicks "Tap to speak".
+   * Speech recognition starts after the user taps the mic.
+   * Tapping while the assistant is speaking interrupts playback and starts listening.
    */
   startListening(): void {
-    // Prevent mic trigger while already processing or speaking (prevent feedback loops)
-    if (this.state() === 'PROCESSING' || this.state() === 'SPEAKING') {
-      console.warn('Microphone trigger ignored: AI is processing or speaking');
+    if (this.state() === 'PROCESSING') {
+      console.warn('Microphone trigger ignored: AI is processing');
       return;
+    }
+
+    if (this.state() === 'SPEAKING') {
+      this.provider.cancelSpeech();
+      this.userExplicitTrigger = false;
+      this._logState('IDLE');
     }
 
     if (!this.provider.isSupported()) {

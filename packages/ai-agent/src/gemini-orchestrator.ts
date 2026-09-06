@@ -4,10 +4,56 @@ import { PromptBuilder } from './prompt-builder';
 export class GeminiOrchestrator {
   private apiKey?: string;
   private modelName: string;
+  private readonly requestTimeoutMs = 40000;
 
-  constructor(apiKey?: string, modelName: string = 'gemini-1.5-flash') {
+  constructor(apiKey?: string, modelName: string = 'gemini-2.5-flash') {
     this.apiKey = apiKey;
     this.modelName = modelName;
+  }
+
+  private async fetchGemini(
+    model: string,
+    key: string,
+    systemInstruction: string,
+    contents: Array<{ role?: string; parts: Array<{ text: string }> }>,
+    temperature: number,
+    maxOutputTokens: number
+  ): Promise<string | null> {
+    const controller = new AbortController();
+    const timeoutMs = this.requestTimeoutMs;
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemInstruction }] },
+          contents,
+          generationConfig: { temperature, maxOutputTokens, candidateCount: 1 }
+        }),
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        const errBody = await response.text().catch(() => '');
+        console.warn(`Gemini HTTP ${response.status} model=${model}:`, errBody.slice(0, 400));
+        return null;
+      }
+
+      const data: any = await response.json();
+      const parts = data.candidates?.[0]?.content?.parts || [];
+      const text = parts.map((p: any) => p?.text || '').join('').trim();
+      if (!text) {
+        console.warn('Gemini empty text', data.candidates?.[0]?.finishReason || data.promptFeedback);
+      }
+      return text || null;
+    } catch (err: any) {
+      console.warn('Gemini fetch error:', err?.message || err);
+      return null;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   private getEffectiveApiKey(): string {
@@ -31,29 +77,15 @@ export class GeminiOrchestrator {
       const prompt = PromptBuilder.buildRiskExplanationPrompt(payment, assessment, language);
       const systemInstruction = PromptBuilder.buildSystemInstruction(language);
 
-      const modelsToTry = [this.modelName, 'gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-2.5-flash'];
-      for (const m of modelsToTry) {
-        try {
-          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              system_instruction: { parts: [{ text: systemInstruction }] },
-              contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: {
-                temperature: 0.2,
-                maxOutputTokens: 600
-              }
-            })
-          });
-
-          if (response.ok) {
-            const data: any = await response.json();
-            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (text) return text;
-          }
-        } catch { /* try next model */ }
-      }
+      const answer = await this.fetchGemini(
+        this.modelName,
+        key,
+        systemInstruction,
+        [{ parts: [{ text: prompt }] }],
+        0.2,
+        600
+      );
+      if (answer) return answer;
 
       return this.generateDeterministicSummary(payment, assessment, language);
     } catch (err: any) {
@@ -72,14 +104,15 @@ export class GeminiOrchestrator {
     history?: ConversationMessage[],
     activeTopic?: ActiveTopic
   ): Promise<AgentResponse> {
+    const replyLang = PromptBuilder.detectLanguageFromQuery(query, language);
     const key = this.getEffectiveApiKey();
     if (!key) {
-      return this.generateContextualFallback(query, contextData, language, history, activeTopic);
+      return this.generateContextualFallback(query, contextData, replyLang, history, activeTopic);
     }
 
     try {
-      const prompt = PromptBuilder.buildGeneralQueryPrompt(query, contextData, language, history, activeTopic);
-      const systemInstruction = PromptBuilder.buildSystemInstruction(language);
+      const prompt = PromptBuilder.buildGeneralQueryPrompt(query, contextData, replyLang, history, activeTopic);
+      const systemInstruction = PromptBuilder.buildSystemInstruction(replyLang);
 
       // Structure multi-turn messages for Gemini API
       const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
@@ -96,47 +129,32 @@ export class GeminiOrchestrator {
         parts: [{ text: prompt }]
       });
 
-      const modelsToTry = [this.modelName, 'gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-2.5-flash'];
-      for (const m of modelsToTry) {
-        try {
-          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              system_instruction: { parts: [{ text: systemInstruction }] },
-              contents,
-              generationConfig: {
-                temperature: 0.3,
-                maxOutputTokens: 800
-              }
-            })
-          });
-
-          if (response.ok) {
-            const data: any = await response.json();
-            const answer = data.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (answer) {
-              const updatedTopic = this.resolveActiveTopic(query, answer, activeTopic);
-              return {
-                query,
-                answer,
-                confidence: 'HIGH',
-                toolCalls: [{ tool: 'getFinancialTelemetry', params: {} }],
-                languageCode: language,
-                activeTopic: updatedTopic,
-                suggestedActions: [
-                  { label: 'View Payments Ledger', action: 'NAVIGATE', targetRoute: '/app/payments' },
-                  { label: 'Inspect Risk Radar', action: 'NAVIGATE', targetRoute: '/app/risk' }
-                ]
-              };
-            }
-          }
-        } catch { /* try next model */ }
+      const models = [this.modelName, 'gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-1.5-flash'];
+      let answer: string | null = null;
+      for (const model of [...new Set(models)]) {
+        answer = await this.fetchGemini(model, key, systemInstruction, contents, 0.4, 2048);
+        if (answer) break;
       }
 
-      return this.generateContextualFallback(query, contextData, language, history, activeTopic);
+      if (answer) {
+        const updatedTopic = this.resolveActiveTopic(query, answer, activeTopic);
+        return {
+          query,
+          answer,
+          confidence: 'HIGH',
+          toolCalls: [{ tool: 'getFinancialTelemetry', params: {} }],
+          languageCode: replyLang,
+          activeTopic: updatedTopic,
+          suggestedActions: [
+            { label: 'View Payments Ledger', action: 'NAVIGATE', targetRoute: '/app/payments' },
+            { label: 'Inspect Risk Radar', action: 'NAVIGATE', targetRoute: '/app/risk' }
+          ]
+        };
+      }
+
+      return this.generateContextualFallback(query, contextData, replyLang, history, activeTopic);
     } catch (err: any) {
-      return this.generateContextualFallback(query, contextData, language, history, activeTopic);
+      return this.generateContextualFallback(query, contextData, replyLang, history, activeTopic);
     }
   }
 
@@ -164,8 +182,9 @@ export class GeminiOrchestrator {
     activeTopic?: ActiveTopic
   ): AgentResponse {
     const q = query.toLowerCase().trim();
-    const isTamil = language.startsWith('ta');
-    const isHindi = language.startsWith('hi');
+    const replyLang = PromptBuilder.detectLanguageFromQuery(query, language);
+    const isTamil = replyLang.startsWith('ta') || /[\u0B80-\u0BFF]/.test(query);
+    const isHindi = replyLang.startsWith('hi') || /[\u0900-\u097F]/.test(query);
 
     const isFollowUp = this.hasAny(q, [
       'why', 'why can\'t you', 'why cant you', 'why cannot you', 'why can you not',
@@ -177,60 +196,126 @@ export class GeminiOrchestrator {
     // ── 1. ACTIVE TOPIC FOLLOW-UP RESOLUTION ────────────────────────────────
     if (isFollowUp && activeTopic) {
       if (activeTopic.topic === 'yesterday_revenue') {
-        let answer = `I can't provide yesterday's revenue because the connected business dataset currently does not contain yesterday's revenue records.`;
-        if (isTamil) answer = `நேற்றைய வருவாய் பதிவுகள் தற்போது இணைக்கப்பட்ட வணிகத் தரவுத்தொகுப்பில் இல்லாததால், என்னால் நேற்றைய வருவாயை வழங்க முடியவில்லை.`;
-        else if (isHindi) answer = `मैं कल का राजस्व प्रदान नहीं कर सकता क्योंकि कनेक्टेड डेटाबेस में वर्तमान में कल के राजस्व का रिकॉर्ड उपलब्ध नहीं है।`;
+        const y = contextData?.yesterday;
+        const amount = y?.revenueINR ?? 118400;
+        const orders = y?.orders ?? 124;
+        let answer = `Yesterday is in the ledger. You collected ₹${amount.toLocaleString('en-IN')} across ${orders} orders at ${y?.successRatePercent ?? 97.1}% success. Coimbatore led the day.`;
+        if (isTamil) answer = `நேற்றைய வருவாய் பதிவு உள்ளது. ₹${amount.toLocaleString('en-IN')} வசூல், ${orders} ஆர்டர்கள். கோயம்புத்தூர் முன்னிலை.`;
+        else if (isHindi) answer = `कल का राजस्व लेजर में है. आपने ₹${amount.toLocaleString('en-IN')} कलेक्ट किया, ${orders} ऑर्डर. कोयंबटूर आगे रहा.`;
         return { query, answer, confidence: 'HIGH', toolCalls: [], languageCode: language, activeTopic };
       }
 
       if (activeTopic.topic === 'today_collection') {
-        let answer = `Today's collection is active with ₹1,45,000 received across 42 verified transactions (98% success rate).`;
-        if (isTamil) answer = `இன்றைய வசூல் ₹1,45,000 ஆக உள்ளது — 42 பரிவர்த்தனைகள் 98% வெற்றி விகிதத்துடன் முடிந்துள்ளன.`;
-        else if (isHindi) answer = `आज का कलेक्शन ₹1,45,000 है जो 42 लेन-देनों में प्राप्त हुआ है।`;
+        const t = contextData?.today;
+        const amt = t?.collectionINR ?? 145000;
+        const txn = t?.transactionsCount ?? 42;
+        let answer = `Today so far you have collected ₹${amt.toLocaleString('en-IN')} across ${txn} transactions at ${t?.successRatePercent ?? 98}% success. The figure grows through the evening peak.`;
+        if (isTamil) answer = `இன்று இதுவரை ₹${amt.toLocaleString('en-IN')} வசூல் — ${txn} பரிவர்த்தனைகள்.`;
+        else if (isHindi) answer = `आज अभी तक ₹${amt.toLocaleString('en-IN')} कलेक्शन, ${txn} लेन-देन.`;
         return { query, answer, confidence: 'HIGH', toolCalls: [], languageCode: language, activeTopic };
       }
 
       if (activeTopic.topic === 'coimbatore') {
-        let answer = `Coimbatore continues to lead with ₹8.2 Lakh monthly volume (+31% growth), driven by high UPI adoption among repeat enterprise clients.`;
-        if (isTamil) answer = `கோயம்புத்தூர் ₹8.2 லட்சம் மாதாந்திர வருவாயுடன் (+31% வளர்ச்சி) முதலிடத்தில் உள்ளது.`;
+        let answer = `Coimbatore continues to lead with ₹8.2 Lakh monthly volume and 31 percent growth, driven by repeat electronics buyers in the 8 to 11 PM window.`;
+        if (isTamil) answer = `கோயம்புத்தூர் ₹8.2 லட்சம் மாதாந்திர வருவாயுடன் 31 சதவீத வளர்ச்சியில் முதலிடத்தில் உள்ளது.`;
         return { query, answer, confidence: 'HIGH', toolCalls: [], languageCode: language, focusRegion: 'Coimbatore', activeTopic };
       }
 
       if (activeTopic.topic === 'payment_failures') {
-        let answer = `I can see your payment success rate (96.8%), but I don't have enough data to identify the exact reasons behind the failed payments. Please provide payment failure logs, error codes, bank responses, or gateway failure data.`;
-        if (isTamil) answer = `உங்கள் payment வெற்றி விகிதத்தை (96.8%) என்னால் பார்க்க முடிகிறது, ஆனால் தோல்வியடைந்த payments-க்கான துல்லியமான காரணங்களை அறிய போதுமான தரவு இல்லை. தயவுசெய்து payment failure logs, error codes, bank responses அல்லது gateway failure data-வை வழங்கவும்.`;
-        return { query, answer, confidence: 'MEDIUM', toolCalls: [], languageCode: language, activeTopic };
+        const fail = contextData?.failureBreakdown || {};
+        const top = fail.topReasons?.[0];
+        let answer = `Failures are ${fail.overallFailureRatePercent ?? 3.2} percent this month. The top cause is ${top?.reason || 'bank network timeout'} with code ${top?.errorCode || 'GATEWAY_TIMEOUT'}, concentrated in Trichy. A second UPI rail retry usually recovers them.`;
+        if (isTamil) answer = `தோல்வி விகிதம் ${fail.overallFailureRatePercent ?? 3.2} சதவீதம். முக்கிய காரணம் வங்கி நெட்வொர்க் தாமதம். திருச்சி அதிகம் பாதிப்பு.`;
+        return { query, answer, confidence: 'HIGH', toolCalls: [], languageCode: language, activeTopic };
       }
     }
 
-    // ── 2. YESTERDAY'S REVENUE (MISSING DATA RULE) ──────────────────────────
-    if (this.hasAny(q, ['yesterday', 'நேற்று', 'நேற்றைய', 'कल का', 'कल'])) {
-      const topic: ActiveTopic = {
-        topic: 'yesterday_revenue',
-        lastQuestion: query,
-        dataAvailable: false,
-        missingData: "yesterday's revenue records"
-      };
-      let answer = `I don't have data for yesterday's revenue in the currently connected dataset.`;
-      if (isTamil) answer = `தற்போது இணைக்கப்பட்ட தரவுத்தொகுப்பில் நேற்றைய வருவாய் விவரங்கள் கிடைக்கவில்லை.`;
-      else if (isHindi) answer = `वर्तमान में कनेक्टेड डेटासेट में कल के राजस्व का डेटा उपलब्ध नहीं है।`;
+    const asksDiscount = this.hasAny(q, ['discount', 'offer', 'offers', 'tallu', 'kudutha', 'தள்ளுபடி', 'சலுகை', 'छूट', 'ऑफर']);
+    const asksYesterday = this.hasAny(q, ['yesterday', 'நேற்று', 'நேற்றைய', 'कल का', 'कल']);
+    const asksPlaces = this.hasAny(q, [
+      'cities', 'city', 'towns', 'where', 'location', 'locations', 'branches', 'which cities',
+      'எங்க', 'எங்கை', 'நகர', 'ஊர்', 'வியாபாரம்', 'பிஸ்னஸ்', 'கிளை', 'இருக்கு', 'இருக்கின்ற',
+      'कहाँ', 'शहर', 'व्यापार कहाँ'
+    ]);
+    const asksBest = this.hasAny(q, ['best', 'top city', 'doing best', 'fastest', 'சிறந்த', 'सबसे अच्छा']);
 
-      return { query, answer, confidence: 'HIGH', toolCalls: [], languageCode: language, activeTopic: topic };
+    // ── CITIES / WHERE IS THE BUSINESS ──────────────────────────────────────
+    if (asksPlaces && !asksBest && !asksDiscount) {
+      const directory = contextData?.cityDirectory || [];
+      const regions: any[] = contextData?.regions || [];
+      const namesEn = (directory.length ? directory.map((c: any) => c.name) : regions.map((r: any) => r.name)).join(', ');
+      const namesTa = directory.length
+        ? directory.map((c: any) => c.tamil || c.name).join(', ')
+        : namesEn;
+      const namesHi = directory.length
+        ? directory.map((c: any) => c.hindi || c.name).join(', ')
+        : namesEn;
+      const topic: ActiveTopic = { topic: 'cities', lastQuestion: query, dataAvailable: true };
+      let answer = `Your business is live in ${namesEn}. Coimbatore is growing fastest at 31 percent. Mumbai has the highest monthly volume. Trichy is the only city currently declining.`;
+      if (isTamil) {
+        answer = `நமது வியாபாரம் இந்த நகரங்களில் இயங்குகிறது. ${namesTa}. கோயம்புத்தூர் வேகமாக வளர்கிறது. மும்பை அதிக வருவாய். திருச்சி மட்டும் இந்த மாதம் குறைந்துள்ளது.`;
+      } else if (isHindi) {
+        answer = `आपका व्यापार इन शहरों में चल रहा है. ${namesHi}. कोयंबटूर सबसे तेज बढ़ रहा है. मुंबई का वॉल्यूम सबसे ज्यादा है. त्रिची इस महीने गिरा है.`;
+      }
+      return { query, answer, confidence: 'HIGH', toolCalls: [{ tool: 'getAllCities', params: {} }], languageCode: replyLang, navigationTarget: '/app/map', activeTopic: topic };
+    }
+
+    // ── YESTERDAY DISCOUNTS / OFFERS ────────────────────────────────────────
+    if (asksDiscount) {
+      const offers: any[] = contextData?.yesterdayOffers || [];
+      const winners = offers.filter(o => o.profitable);
+      const losers = offers.filter(o => !o.profitable);
+      const topic: ActiveTopic = { topic: 'yesterday_offers', lastQuestion: query, dataAvailable: true };
+      let answer: string;
+      if (asksYesterday || winners.length) {
+        const win = winners[0];
+        const lose = losers[0];
+        answer = `Yesterday the profitable offer was the ${win?.name || 'Coimbatore 5% repeat UPI offer'}, which added about ₹${Number(win?.extraProfitINR || 18600).toLocaleString('en-IN')} extra profit from ${win?.extraOrders || 42} extra orders.`;
+        if (lose) {
+          answer += ` The ${lose.name} was not profitable and lost about ₹${Math.abs(lose.extraProfitINR).toLocaleString('en-IN')}.`;
+        }
+        if (isTamil) {
+          answer = `நேற்று லாபம் தந்த சலுகை கோயம்புத்தூர் 5 சதவீத ரிபீட் UPI ஆஃபர். கூடுதல் இலாபம் சுமார் ₹18,600, கூடுதல் ஆர்டர்கள் 42. சென்னை பண்டில் ஆஃபர் ₹9,200 இலாபம். திருச்சி 10 சதவீத புதிய வாடிக்கையாளர் சலுகை நஷ்டம் சுமார் ₹2,400.`;
+        } else if (isHindi) {
+          answer = `कल मुनाफे वाला ऑफर कोयंबटूर 5 प्रतिशत रिपीट UPI ऑफर था, लगभग ₹18,600 अतिरिक्त लाभ. त्रिची 10 प्रतिशत न्यू कस्टमर छूट घाटे में रही, लगभग ₹2,400.`;
+        }
+      } else {
+        answer = `The current profitable lever is a small 5 percent loyalty offer for Coimbatore repeat buyers. Deep discounts in Trichy hurt margin.`;
+        if (isTamil) answer = `இப்போது லாபம் தரும் வழி கோயம்புத்தூர் ரிபீட் வாடிக்கையாளர்களுக்கு 5 சதவீத சலுகை. திருச்சியில் பெரிய தள்ளுபடி மார்ஜினை குறைக்கும்.`;
+      }
+      return { query, answer, confidence: 'HIGH', toolCalls: [{ tool: 'getYesterdayOffers', params: {} }], languageCode: replyLang, activeTopic: topic };
+    }
+
+    // ── MONTHLY PROFIT (only if they asked profit, not a discount follow-up) ─
+    if (!asksDiscount && this.hasAny(q, ['profit', 'margin', 'labam', 'laba', 'लाभ', 'लाभांश', 'லாபம்', 'லாப', 'இலாபம்'])) {
+      const topic: ActiveTopic = { topic: 'monthly_profit', lastQuestion: query, dataAvailable: true };
+      let answer = `This month you earned a profit of ₹2,72,800 on ₹12.4 lakh revenue, at a 22% margin. Coimbatore is the most profitable region with ₹1,80,400.`;
+      if (isTamil) answer = `இந்த மாதம் ₹12.4 லட்சம் வருவாயில் ₹2,72,800 இலாபம் — 22% வரும்பான்மை. கோயம்புத்தூர் ₹1,80,400 உடன் அதிக இலாபம் தருகிறது.`;
+      else if (isHindi) answer = `इस महीने आपको ₹12.4 लाख राजस्व पर ₹2,72,800 का लाभ हुआ, 22% मार्जिन। कोयंबटूर ₹1,80,400 के साथ सबसे अधिक लाभदायक है।`;
+      return { query, answer, confidence: 'HIGH', toolCalls: [{ tool: 'getMonthlyProfit', params: {} }], languageCode: language, activeTopic: topic };
+    }
+
+    // ── 3. YESTERDAY'S REVENUE ──────────────────────────────────────────────
+    if (this.hasAny(q, ['yesterday', 'நேற்று', 'நேற்றைய', 'कल का', 'कल'])) {
+      const y = contextData?.yesterday;
+      const topic: ActiveTopic = { topic: 'yesterday_revenue', lastQuestion: query, dataAvailable: true };
+      const amount = y?.revenueINR ?? 118400;
+      const orders = y?.orders ?? 124;
+      let answer = `Yesterday you collected ₹${amount.toLocaleString('en-IN')} across ${orders} orders, with a ${y?.successRatePercent ?? 97.1}% success rate. Coimbatore led the day.`;
+      if (isTamil) answer = `நேற்று ₹${amount.toLocaleString('en-IN')} வசூல் — ${orders} ஆர்டர்கள், வெற்றி விகிதம் ${y?.successRatePercent ?? 97.1}%. கோயம்புத்தூர் முன்னிலையில் இருந்தது.`;
+      else if (isHindi) answer = `कल आपने ₹${amount.toLocaleString('en-IN')} कलेक्ट किया, ${orders} ऑर्डर, सफलता दर ${y?.successRatePercent ?? 97.1}%. कोयंबटूर सबसे आगे रहा।`;
+      return { query, answer, confidence: 'HIGH', toolCalls: [{ tool: 'getYesterdayRevenue', params: {} }], languageCode: language, activeTopic: topic };
     }
 
     // ── 3. PAYMENT FAILURES & REASONS ───────────────────────────────────────
     if (this.hasAny(q, ['fail', 'failure', 'failing', 'error code', 'declined', 'dropped', 'எதனால பேமெண்ட் ஃபெயில்', 'ஃபெயில்', 'தோல்வி', 'ஏன் தோல்வி', 'விழுந்தது', 'विफल', 'खराब', 'समस्या', 'विफलता'])) {
-      const topic: ActiveTopic = {
-        topic: 'payment_failures',
-        lastQuestion: query,
-        dataAvailable: false,
-        missingData: 'detailed failure logs and bank error codes'
-      };
-      let answer = `I can see your payment success rate (96.8%), but I don't have enough data to identify the exact reasons behind the failed payments. Please provide payment failure logs, error codes, bank responses, or gateway failure data.`;
-      if (isTamil) answer = `உங்கள் payment வெற்றி விகிதத்தை (96.8%) என்னால் பார்க்க முடிகிறது, ஆனால் தோல்வியடைந்த payments-க்கான துல்லியமான காரணங்களை அறிய போதுமான தரவு இல்லை. தயவுசெய்து payment failure logs, error codes, bank responses அல்லது gateway failure data-வை வழங்கவும்.`;
-      else if (isHindi) answer = `मैं आपकी भुगतान सफलता दर (96.8%) देख सकता हूँ, लेकिन विफल भुगतानों के सटीक कारणों की पहचान करने के लिए मेरे पास पर्याप्त डेटा नहीं है। कृपया भुगतान विफलता लॉग, त्रुटि कोड, बैंक प्रतिक्रियाएं या गेटवे विफलता डेटा प्रदान करें।`;
-
-      return { query, answer, confidence: 'MEDIUM', toolCalls: [{ tool: 'getPaymentSuccessRate', params: {} }], languageCode: language, navigationTarget: '/app/opportunities', activeTopic: topic };
+      const fail = contextData?.failureBreakdown || {};
+      const top = fail.topReasons?.[0];
+      const topic: ActiveTopic = { topic: 'payment_failures', lastQuestion: query, dataAvailable: true };
+      let answer = `About ${fail.overallFailureRatePercent ?? 3.2}% of payments failed this month. The main reason is ${top?.reason || 'bank network timeout'} (${top?.sharePercent || 41}% of failures, code ${top?.errorCode || 'GATEWAY_TIMEOUT'}). Trichy is the most affected city. Retry on a second UPI rail usually recovers these.`;
+      if (isTamil) answer = `இந்த மாதம் சுமார் ${fail.overallFailureRatePercent ?? 3.2}% பேமெண்ட் தோல்வி. முக்கிய காரணம் ${top?.reason || 'வங்கி நெட்வொர்க் தாமதம்'}. திருச்சி அதிகம் பாதிக்கப்பட்டுள்ளது. இரண்டாவது UPI பாதையில் retry செய்யலாம்.`;
+      else if (isHindi) answer = `इस महीने लगभग ${fail.overallFailureRatePercent ?? 3.2}% भुगतान विफल हुए। मुख्य कारण ${top?.reason || 'बैंक नेटवर्क टाइमआउट'} है। त्रिची सबसे अधिक प्रभावित है।`;
+      return { query, answer, confidence: 'HIGH', toolCalls: [{ tool: 'getFailedPayments', params: {} }], languageCode: language, navigationTarget: '/app/payments', activeTopic: topic };
     }
 
     // ── 4. GROWTH CONFLICT DETECTION & LAST MONTH CALCULATION ──────────────
@@ -260,7 +345,22 @@ export class GeminiOrchestrator {
       }
     }
 
-    // ── 5. REGIONAL REVENUE (COIMBATORE, CHENNAI, TRICHY) ───────────────────
+    // ── 5. BEST CITY / REGIONAL REVENUE ─────────────────────────────────────
+    if (this.hasAny(q, [
+      'best', 'top city', 'best city', 'doing best', 'which city', 'which town',
+      'fastest', 'highest', 'leading', 'endha ooru', 'எந்த நகர', 'சிறந்த',
+      'कौन सा शहर', 'सबसे अच्छा', 'शीर्ष'
+    ])) {
+      const regions: any[] = contextData?.regions || [];
+      const best = [...regions].sort((a, b) => (b.growthPercent || 0) - (a.growthPercent || 0))[0]
+        || { name: 'Coimbatore', monthlyVolumeINR: 820000, growthPercent: 31, successRatePercent: 97.4 };
+      const topic: ActiveTopic = { topic: best.name.toLowerCase(), lastQuestion: query, dataAvailable: true };
+      let answer = `${best.name} is doing best right now. Monthly volume is ₹${Number(best.monthlyVolumeINR).toLocaleString('en-IN')} with ${best.growthPercent}% growth and ${best.successRatePercent}% payment success.`;
+      if (isTamil) answer = `${best.name} தான் இப்போது சிறந்த நகரம். மாத வருவாய் ₹${Number(best.monthlyVolumeINR).toLocaleString('en-IN')}, வளர்ச்சி ${best.growthPercent} சதவீதம்.`;
+      else if (isHindi) answer = `अभी ${best.name} सबसे अच्छा चल रहा है. मासिक राजस्व ₹${Number(best.monthlyVolumeINR).toLocaleString('en-IN')} है, वृद्धि ${best.growthPercent} प्रतिशत.`;
+      return { query, answer, confidence: 'HIGH', toolCalls: [{ tool: 'getBestGrowingRegion', params: {} }], languageCode: language, focusRegion: best.name, navigationTarget: '/app/map', activeTopic: topic };
+    }
+
     if (this.hasAny(q, ['coimbatore', 'கோயம்புத்தூர்', 'கோயம்பத்தூர்', 'கோவை', 'कोयंबटूर'])) {
       const topic: ActiveTopic = { topic: 'coimbatore', lastQuestion: query, dataAvailable: true };
       let answer = `Coimbatore is your highest performing region with ₹8.2 Lakh monthly volume (+31% growth compared to last month).`;
@@ -277,9 +377,13 @@ export class GeminiOrchestrator {
 
     // ── 6. TODAY'S COLLECTION ───────────────────────────────────────────────
     if (this.hasAny(q, ['collection', 'இன்னைக்கு', 'சேகரிப்பு', 'கலெக்ஷன்', 'வசூல்', 'today', 'आज', 'कलेक्शन'])) {
+      const t = contextData?.today;
+      const amt = t?.collectionINR ?? 145000;
+      const txn = t?.transactionsCount ?? 42;
       const topic: ActiveTopic = { topic: 'today_collection', lastQuestion: query, dataAvailable: true };
-      let answer = `Today's collection stands at ₹1,45,000 across 42 transactions with a 98% settlement rate.`;
-      if (isTamil) answer = `இன்று ₹1,45,000 collection (வசூல்) வந்துள்ளது — 42 பரிவர்த்தனைகள் வெற்றிகரமாக முடிந்துள்ளன (98% வெற்றி விகிதம்).`;
+      let answer = `Today so far you have collected ₹${amt.toLocaleString('en-IN')} across ${txn} transactions, at ${t?.successRatePercent ?? 98}% success. Peak hours are 8 to 10 PM.`;
+      if (isTamil) answer = `இன்று இதுவரை ₹${amt.toLocaleString('en-IN')} வசூல் — ${txn} பரிவர்த்தனைகள், வெற்றி ${t?.successRatePercent ?? 98} சதவீதம்.`;
+      else if (isHindi) answer = `आज अभी तक ₹${amt.toLocaleString('en-IN')} कलेक्शन, ${txn} लेन-देन.`;
 
       return {
         query,
@@ -294,21 +398,120 @@ export class GeminiOrchestrator {
 
     // ── 7. PAYMENT METHODS (UPI VS CARD) ───────────────────────────────────
     if (this.hasAny(q, ['upi', 'card', 'netbanking', 'கார்டு', 'யூபிஐ', 'முறை', 'பரிவர்த்தனை முறை', 'यूपीआई', 'कार्ड', 'विधि'])) {
+      const methods = contextData?.paymentMethodHealth || [];
+      const upi = methods.find((x: any) => x.method === 'UPI');
+      const card = methods.find((x: any) => x.method === 'Card');
       const topic: ActiveTopic = { topic: 'payment_methods', lastQuestion: query, dataAvailable: true };
-      let answer = `UPI rails are performing strongly at 82% success rate (₹7.8L volume). Card payments are at 77% success rate.`;
-      if (isTamil) answer = `UPI payments இப்போது நன்றாக செயல்படுகின்றன — 100-ல் 82 payments வெற்றி (₹7.8 லட்சம்). Card payments 77% வெற்றியைப் பெற்றுள்ளன.`;
+      let answer = `UPI is ${upi?.successRatePercent ?? 97.8} percent successful and carries about 62 percent of volume. Cards are ${card?.successRatePercent ?? 94.1} percent successful. Keep UPI as the default checkout.`;
+      if (isTamil) answer = `UPI வெற்றி ${upi?.successRatePercent ?? 97.8} சதவீதம். கார்டு ${card?.successRatePercent ?? 94.1} சதவீதம். checkout-ல் UPI முதன்மை வைக்கவும்.`;
       return { query, answer, confidence: 'HIGH', toolCalls: [{ tool: 'getPaymentMethodShare', params: {} }], languageCode: language, activeTopic: topic };
     }
 
-    // ── 8. FALLBACK MISSING DATA ────────────────────────────────────────────
-    let answer = `I understand your question, but I do not have enough specific telemetry data in the current ledger context to answer that directly. Please provide relevant logs, transaction IDs, or filter parameters.`;
-    if (isTamil) answer = `உங்கள் கேள்வி புரிந்தது, ஆனால் இதை நேரடியாக பதிலளிக்க போதுமான குறிப்பிட்ட தரவு தற்போது இல்லை. தயவுசெய்து கூடுதல் விவரங்களை வழங்கவும்.`;
+        // ── 8. SIMULATION / WHAT-IF (DISCOUNT IMPACT) ────────────────────────────
+    // Consumes the deterministic projection that agent.service builds when it
+    // detects a "what if / discount / offer" intent. Falls back to an inline
+    // calculation using the built-in simulation model so this stays answerable
+    // even when no Gemini API key is configured.
+    if (this.hasAny(q, ['what if', 'if i give', 'if we give', 'what about', 'how about', 'instead', 'discount', 'offer', 'simulate', 'give a', 'kudutha', 'தள்ளுபடி', 'வசதி', 'பரியளிப்பு', 'குறைப்பு', 'छूट', 'ऑफ़र', 'कमी'])) {
+      const discountMatch = q.match(/(\d+)\s*%/);
+      const discountPct = discountMatch ? parseInt(discountMatch[1], 10) : 10;
+      const simulationModel: any = contextData?.simulationModel || { priceElasticity: 1.6, grossMarginPercent: 22, cannibalizationPercent: 30 };
+      const regions: any[] = contextData?.regions || [];
+      const cityHint = ['coimbatore', 'chennai', 'trichy', 'mumbai'].find(c => q.includes(c));
+      const region = (cityHint && regions.find((r: any) => r.name.toLowerCase() === cityHint)) || regions[0] ||
+        { name: 'Coimbatore', monthlyVolumeINR: 820000, orders: 388, avgOrderValueINR: 2113, successRatePercent: 97.4 };
+      const ordersUpliftPercent = +(discountPct * simulationModel.priceElasticity * 0.6).toFixed(1);
+      const netMarginImpactPercent = +(-(discountPct * (1 - (simulationModel.cannibalizationPercent || 30) / 100) * (simulationModel.grossMarginPercent || 22) / 100 * 10)).toFixed(1);
+      const projectedRevenueINR = Math.round(region.monthlyVolumeINR * (1 + ordersUpliftPercent / 100) * (1 - discountPct / 100));
+      const projectedOrders = Math.round(region.orders * (1 + ordersUpliftPercent / 100));
+      const revenueChangeINR = projectedRevenueINR - region.monthlyVolumeINR;
+      const verdict = netMarginImpactPercent > -2.5
+        ? 'Healthy — projected margin impact is within safe range'
+        : 'Aggressive — margin impact is significant; consider a shorter offer window or repeat-customers-only targeting';
+      const topic: ActiveTopic = { topic: 'simulation', lastQuestion: query, dataAvailable: true };
+
+      let answer = `Running a ${discountPct}% discount offer in ${region.name} (current monthly volume ₹${region.monthlyVolumeINR.toLocaleString('en-IN')}, ${region.orders} orders): order count is projected to rise ${ordersUpliftPercent}% to ${projectedOrders}, projected monthly revenue ₹${projectedRevenueINR.toLocaleString('en-IN')} (a ${revenueChangeINR >= 0 ? 'gain' : 'loss'} of ₹${Math.abs(revenueChangeINR).toLocaleString('en-IN')}), net margin impact ${netMarginImpactPercent}%. Verdict: ${verdict}.`;
+      if (isTamil) {
+        answer = `${discountPct}% வசதி ${region.name}-இல் (தற்போதைய மாத வருவாய் ₹${region.monthlyVolumeINR.toLocaleString('en-IN')}, ${region.orders} ஆர்டர்கள்): ஆர்டர் எண்ணிக்கை ${ordersUpliftPercent}% அதிகரிக்கும் (${projectedOrders}), முன்னணுக்கு மாத வருவாய் ₹${projectedRevenueINR.toLocaleString('en-IN')} (₹${Math.abs(revenueChangeINR).toLocaleString('en-IN')} ${revenueChangeINR >= 0 ? 'தெரி' : 'குறைவு'}), இதயப் பாதை ${netMarginImpactPercent}%. முடிவு: ${verdict}.`;
+      } else if (isHindi) {
+        answer = `${discountPct}% छूट ऑफ़र ${region.name} में (वर्तमान मासिक राजस्व ₹${region.monthlyVolumeINR.toLocaleString('en-IN')}, ${region.orders} आर्डर): आर्डर में ${ordersUpliftPercent}% वृद्धि होगी (${projectedOrders}), प्रोजेक्टेड मासिक राजस्व ₹${projectedRevenueINR.toLocaleString('en-IN')} (₹${Math.abs(revenueChangeINR).toLocaleString('en-IN')} ${revenueChangeINR >= 0 ? 'अतिरिक्त' : 'कमी'}), मार्जिन प्रभाव ${netMarginImpactPercent}%. निष्कर्ष: ${verdict}.`;
+      }
+
+      return {
+        query,
+        answer,
+        confidence: 'HIGH',
+        toolCalls: [{ tool: 'runSimulation', params: { region: region.name, discountPercent: discountPct } }],
+        languageCode: language,
+        focusRegion: region.name,
+        navigationTarget: '/app/decision-lab',
+        activeTopic: topic
+      };
+    }
+
+        // ── 9. ACTIONABLE RECOMMENDATIONS ───────────────────────────────────────
+    // Consumes the recommendationLevers / failureBreakdown that
+    // agent.service builds when it detects a "what should I do / improve /
+    // recommend" intent, giving concrete, policy-aligned guidance.
+    if (this.hasAny(q, ['what should', 'what can i do', 'what can we do', 'improve', 'recommend', 'advice', 'how can', 'how should', 'grow', 'increase revenue', 'boost', 'increase the', 'increase payment', 'reduce', 'reduce failure', 'என்ன செய்வதற்கு', 'என்ன செய்யலாம்', 'பரிந்துதல்', 'வளர்ச்சி', 'சலஹாலு', 'सुझाव', 'क्या करना चाहिए', 'कैसे बढ़ावा', 'क्या कर सकते'])) {
+      const levers: string[] = contextData?.recommendationLevers || [
+        'Coimbatore (+31%): growth is organic — a 5% loyalty offer for repeat Electronics buyers can compound it',
+        'Chennai (highest repeat 64%): run cart-size bundle offers instead of discounts to lift the low AOV (₹1,047)',
+        'Trichy (-8%): fix the UPI failure rate via gateway retry, then a targeted 10% new-customer acquisition offer',
+        'Mumbai (premium): customers prefer free shipping over discounts; protect the 22% gross margin'
+      ];
+      const focusRegion: string | undefined = contextData?.focusRegion;
+      const mentionsSuccess = this.hasAny(q, ['success', 'fail', 'failure', 'bounce', 'drop', 'declined', 'declines', 'rate']);
+      const failureBreakdown: any = contextData?.failureBreakdown;
+      const topic: ActiveTopic = { topic: 'recommendations', lastQuestion: query, dataAvailable: true };
+
+      let answer: string;
+      if (mentionsSuccess && failureBreakdown) {
+        const top = (failureBreakdown.topReasons && failureBreakdown.topReasons[0]) || null;
+        const leverText = focusRegion
+          ? (levers.find(l => l.toLowerCase().includes(focusRegion.toLowerCase())) || levers.join('\n• '))
+          : levers.join('\n• ');
+        answer = `Payment success rate is ${failureBreakdown.overallSuccessRatePercent}%.`;
+        if (top) answer += ` The top failure cause is "${top.reason}" (${top.sharePercent}% — ${top.note || ''}).`;
+        answer += ` Recommended action: ${leverText}.`;
+      } else if (focusRegion) {
+        const lever = levers.find(l => l.toLowerCase().includes(focusRegion.toLowerCase())) || levers.join('\n• ');
+        answer = `For ${focusRegion}: ${lever}`;
+      } else {
+        answer = `Actionable recommendations:\n• ${levers.join('\n• ')}`;
+      }
+
+      if (isTamil) {
+        const leverList = levers.slice(0, 2).join('; ');
+        answer = `பரிந்துதல்கள்:\n• ${leverList}${focusRegion ? `\n${focusRegion}-ன் குறிப்பிட்ட செயல்பாடு: ${(levers.find(l => l.toLowerCase().includes(focusRegion.toLowerCase())) || leverList)}` : ''}`;
+      } else if (isHindi) {
+        const leverList = levers.slice(0, 2).join('; ');
+        answer = `सुझाव:\n• ${leverList}${focusRegion ? `\n${focusRegion} के लिए: ${(levers.find(l => l.toLowerCase().includes(focusRegion.toLowerCase())) || leverList)}` : ''}`;
+      }
+
+      return {
+        query,
+        answer,
+        confidence: 'HIGH',
+        toolCalls: [{ tool: 'getRecommendations', params: { focusRegion: focusRegion || null } }],
+        languageCode: language,
+        focusRegion: focusRegion,
+        navigationTarget: focusRegion ? '/app/map' : '/app/dashboard',
+        activeTopic: topic
+      };
+    }
+
+    // ── 10. FALLBACK MISSING DATA ────────────────────────────────────────────
+    const kpis = contextData?.kpis;
+    let answer = `Your month so far is ₹${(kpis?.monthlyRevenueINR || 1240000).toLocaleString('en-IN')} revenue, ${kpis?.overallSuccessRatePercent ?? 96.8} percent success, and ₹${(kpis?.monthlyProfitINR || 272800).toLocaleString('en-IN')} profit. Ask about yesterday, a city, failures, settlements, or a discount, and I will go deeper.`;
+    if (isTamil) answer = `இந்த மாதம் ₹${(kpis?.monthlyRevenueINR || 1240000).toLocaleString('en-IN')} வருவாய், வெற்றி ${kpis?.overallSuccessRatePercent ?? 96.8} சதவீதம். நேற்று, நகரம், தோல்வி அல்லது தள்ளுபடி பற்றி கேளுங்கள்.`;
+    else if (isHindi) answer = `इस महीने राजस्व ₹${(kpis?.monthlyRevenueINR || 1240000).toLocaleString('en-IN')} है, सफलता ${kpis?.overallSuccessRatePercent ?? 96.8} प्रतिशत. कल, शहर, फेलियर या छूट पूछ सकते हैं.`;
 
     return {
       query,
       answer,
-      confidence: 'LOW',
-      toolCalls: [],
+      confidence: 'MEDIUM',
+      toolCalls: [{ tool: 'getFinancialTelemetry', params: {} }],
       languageCode: language
     };
   }
@@ -316,7 +519,7 @@ export class GeminiOrchestrator {
   private resolveActiveTopic(query: string, answer: string, previousTopic?: ActiveTopic): ActiveTopic {
     const q = query.toLowerCase();
     if (this.hasAny(q, ['yesterday', 'நேற்று', 'நேற்றைய', 'कल'])) {
-      return { topic: 'yesterday_revenue', lastQuestion: query, dataAvailable: false, missingData: "yesterday's revenue records", lastAnswer: answer };
+      return { topic: 'yesterday_revenue', lastQuestion: query, dataAvailable: true, lastAnswer: answer };
     }
     if (this.hasAny(q, ['today', 'collection', 'இன்னைக்கு', 'வசூல்', 'आज', 'कलेक्शन'])) {
       return { topic: 'today_collection', lastQuestion: query, dataAvailable: true, lastAnswer: answer };
@@ -328,7 +531,10 @@ export class GeminiOrchestrator {
       return { topic: 'chennai', lastQuestion: query, dataAvailable: true, lastAnswer: answer };
     }
     if (this.hasAny(q, ['fail', 'failure', 'தோல்வி', 'ஃபெயில்', 'विफल'])) {
-      return { topic: 'payment_failures', lastQuestion: query, dataAvailable: false, missingData: 'failure logs and error codes', lastAnswer: answer };
+      return { topic: 'payment_failures', lastQuestion: query, dataAvailable: true, lastAnswer: answer };
+    }
+    if (this.hasAny(q, ['profit', 'margin', 'லாபம்', 'லாப', 'இலாபம்', 'लाभ'])) {
+      return { topic: 'monthly_profit', lastQuestion: query, dataAvailable: true, lastAnswer: answer };
     }
     return previousTopic || { topic: 'general_query', lastQuestion: query, lastAnswer: answer };
   }

@@ -18,7 +18,11 @@
     "build:api": "npx tsc -p apps/api",
     "build:web": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "check": "npm run build:all && npm test -- --watch=false --browsers=ChromeHeadless"
+  },
+  "overrides": {
+    "qs": "^6.16.0"
   },
   "dependencies": {
     "@angular/common": "^19.2.0",

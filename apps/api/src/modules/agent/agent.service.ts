@@ -3,6 +3,8 @@ import { AgentResponse, Payment, ConversationMessage, ActiveTopic } from '@deepa
 import { PaymentsService } from '../payments/payments.service';
 import { AuditService } from '../audit/audit.service';
 import { envConfig } from '../../config/env.config';
+import { geminiConfig } from '../../config/gemini.config';
+import { getBusinessKnowledge } from './business-knowledge.store';
 
 export class AgentService {
   private static instance: AgentService;
@@ -19,7 +21,7 @@ export class AgentService {
   }
 
   private getOrchestrator(): GeminiOrchestrator {
-    return new GeminiOrchestrator(envConfig.geminiApiKey);
+    return new GeminiOrchestrator(envConfig.geminiApiKey, geminiConfig.defaultModel);
   }
 
   /**
@@ -73,87 +75,48 @@ export class AgentService {
   async processQuery(
     query: string,
     languageCode: string = 'en',
-    actor: any,
+    _actor: any,
     conversationHistory?: ConversationMessage[],
     activeTopic?: ActiveTopic
   ): Promise<AgentResponse> {
+    const ledger = getBusinessKnowledge();
     const q = query.toLowerCase();
+    const cityHint = ['coimbatore', 'chennai', 'trichy', 'madurai', 'mumbai', 'bengaluru', 'bangalore', 'delhi']
+      .find(c => q.includes(c));
 
-    // 1. Detect Intent with Context Resolution
-    let intent = 'GENERAL_QUERY';
-    if (q.includes('yesterday') || q.includes('நேற்று') || q.includes('कल')) {
-      intent = 'YESTERDAY_REVENUE';
-    } else if (q.includes('fail') || q.includes('error') || q.includes('தோல்வி') || q.includes('ஃபெயில்')) {
-      intent = 'PAYMENT_FAILURES';
-    } else if (q.includes('collection') || q.includes('today') || q.includes('இன்னைக்கு') || q.includes('வசூல்')) {
-      intent = 'TODAY_COLLECTION';
-    } else if (q.includes('coimbatore') || q.includes('chennai') || q.includes('trichy') || q.includes('கோயம்புத்தூர்')) {
-      intent = 'REGIONAL_METRICS';
-    } else if (q.includes('last month') || q.includes('previous month') || q.includes('கடந்த மாதம்')) {
-      intent = 'LAST_MONTH_REVENUE';
-    } else if (activeTopic) {
-      intent = `FOLLOW_UP_ON_${activeTopic.topic.toUpperCase()}`;
-    }
+    const isSimulation = /what if|if i give|discount|offer|simulate|kudutha|தள்ளுபடி|கொடுத்தால்|छूट/.test(q);
+    const discountMatch = q.match(/(\d+)\s*%/);
+    const discountPct = discountMatch ? parseInt(discountMatch[1], 10) : 10;
+    const region = ledger.regions.find((r: any) => r.name.toLowerCase() === cityHint)
+      || ledger.regions.find((r: any) => r.name.toLowerCase() === 'coimbatore')
+      || ledger.regions[0];
+    const m = ledger.simulationModel;
+    const ordersUpliftPercent = +(discountPct * m.priceElasticity * 0.6).toFixed(1);
+    const netMarginImpactPercent = +(-(discountPct * (1 - m.cannibalizationPercent / 100) * (m.grossMarginPercent / 100) * 10)).toFixed(1);
+    const projectedRevenueINR = Math.round(region.monthlyVolumeINR * (1 + ordersUpliftPercent / 100) * (1 - discountPct / 100));
+    const projectedOrders = Math.round(region.orders * (1 + ordersUpliftPercent / 100));
 
-    // 2. Select strictly relevant business telemetry (No unrelated metric dumping)
-    let relevantData: Record<string, any> = {};
+    const relevantData = {
+      ...ledger,
+      focusHint: cityHint || null,
+      missingDataPolicy: 'If a field is absent, infer from related ledger fields or Indian payments practice and label it as an estimate. Never refuse the question.',
+      deterministicProjection: isSimulation ? {
+        simulationRequest: { region: region.name, discountPercent: discountPct, horizon: '30 days' },
+        ordersUpliftPercent,
+        projectedOrders,
+        projectedRevenueINR,
+        revenueChangeINR: projectedRevenueINR - region.monthlyVolumeINR,
+        netMarginImpactPercent
+      } : undefined
+    };
 
-    if (intent === 'PAYMENT_FAILURES' || activeTopic?.topic === 'payment_failures') {
-      relevantData = {
-        overallSuccessRate: '96.8%',
-        failureLogsAvailable: false,
-        note: 'Detailed bank error codes and gateway drop logs are not connected.'
-      };
-    } else if (intent === 'YESTERDAY_REVENUE' || activeTopic?.topic === 'yesterday_revenue') {
-      relevantData = {
-        yesterdayRevenueAvailable: false,
-        connectedLedgerDateRange: 'Current day and monthly aggregate only.'
-      };
-    } else if (intent === 'TODAY_COLLECTION' || activeTopic?.topic === 'today_collection') {
-      relevantData = {
-        todayCollectionINR: 145000,
-        todayTransactionsCount: 42,
-        todaySettlementRatePercent: 98
-      };
-    } else if (intent === 'REGIONAL_METRICS' || activeTopic?.topic === 'coimbatore' || activeTopic?.topic === 'chennai') {
-      relevantData = {
-        regionalHighlights: {
-          Coimbatore: 'Top performing city with ₹8.2 Lakh monthly volume, +31% growth',
-          Chennai: '₹3.1 Lakh monthly volume, steady growth',
-          Trichy: 'Payments down 8% this week due to lower new customer acquisition'
-        }
-      };
-    } else if (intent === 'LAST_MONTH_REVENUE' || activeTopic?.topic === 'last_month_revenue') {
-      relevantData = {
-        currentMonthlyRevenueINR: 1240000,
-        monthlyGrowthPercent: 18,
-        previousMonthCalculatedINR: 1050847
-      };
-    } else {
-      relevantData = {
-        monthlyRevenueINR: 1240000,
-        monthlyGrowthPercent: 18,
-        overallSuccessRate: '96.8%'
-      };
-    }
-
-    // 3. Debugging logs as requested
-    console.log("Current User Message:", query);
-    console.log("Active Topic:", activeTopic || 'None');
-    console.log("Recent Conversation:", conversationHistory || []);
-    console.log("Detected Intent:", intent);
-    console.log("Relevant Data:", relevantData);
-
-    // 4. Dispatch to Gemini Orchestrator
     const orchestrator = this.getOrchestrator();
-    const response = await orchestrator.processQuery(
+    return orchestrator.processQuery(
       query,
       relevantData,
       languageCode,
       conversationHistory,
       activeTopic
     );
-
-    return response;
   }
 }

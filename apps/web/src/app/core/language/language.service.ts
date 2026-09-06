@@ -54,11 +54,15 @@ export class LanguageService {
     }
   }
 
-  /** True if the active language has first-class translation support */
+  /** True if the active language has first-class UI chrome translation files */
   hasTranslations(code?: string): boolean {
     const check = code ?? this.currentCode();
-    // Languages with full translation files; others fall back to English
     return ['en', 'ta', 'hi'].includes(check);
+  }
+
+  /** Voice replies are generated in all 22 scheduled languages via Gemini. */
+  hasVoiceLanguage(_code?: string): boolean {
+    return true;
   }
 
   /** The code to use for translation lookup (falls back when no translations) */

@@ -77,13 +77,9 @@ import { UserPreferencesService } from '../../core/services/user-preferences.ser
             </select>
           </div>
           <!-- STT warning for non-translated languages -->
-          <div *ngIf="!lang.hasTranslations(lang.currentCode())"
-               class="mt-2 flex items-center gap-1.5 text-[10px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5">
-            <svg class="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
-            </svg>
-            <span>{{ lang.currentLanguage().name }} responses will be in English until full translations are available.</span>
-          </div>
+          <p class="mt-2 text-[10px] text-slate-400">
+            Voice answers in {{ lang.currentLanguage().nativeName }}. Speech continues until you tap interrupt.
+          </p>
         </div>
 
         <!-- Voice state indicator -->
@@ -180,13 +176,13 @@ import { UserPreferencesService } from '../../core/services/user-preferences.ser
           <div *ngIf="activeMode() === 'voice'" class="flex gap-2">
             <button id="mic-btn" type="button" (click)="toggleListening()"
                     class="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-all"
-                    [style]="voice.isListening()
+                    [style]="voice.isListening() || voice.isSpeaking()
                       ? 'background:#fef2f2;color:#dc2626;border:1px solid #fecaca;'
                       : 'background:linear-gradient(135deg,#1e3a8a,#3b82f6);color:#fff;box-shadow:0 4px 14px rgba(59,130,246,0.35);'">
-              <svg class="h-4 w-4" [class.animate-pulse]="voice.isListening()" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <svg class="h-4 w-4" [class.animate-pulse]="voice.isListening() || voice.isSpeaking()" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3Z"/>
               </svg>
-              {{ voice.isListening() ? i18n.t('dhwani.listening') : i18n.t('dhwani.hold_to_speak') }}
+              {{ micLabel() }}
             </button>
             <button *ngIf="voice.conversations().length > 0"
                     (click)="voice.clearConversation()"
@@ -283,11 +279,22 @@ export class AppShellComponent implements AfterViewChecked {
   }
 
   toggleListening() {
+    if (this.voice.isSpeaking()) {
+      this.voice.cancelSpeech();
+      this.voice.startListening();
+      return;
+    }
     if (this.voice.isListening()) {
       this.voice.stopListening();
     } else {
       this.voice.startListening();
     }
+  }
+
+  micLabel(): string {
+    if (this.voice.isSpeaking()) return 'Tap to interrupt';
+    if (this.voice.isListening()) return this.i18n.t('dhwani.listening');
+    return this.i18n.t('dhwani.hold_to_speak');
   }
 
   sendText() {

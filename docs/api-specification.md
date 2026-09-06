@@ -22,7 +22,7 @@ All responses follow the unified response envelope:
 
 ### Authentication
 - **`POST /api/auth/login`**
-  - **Body**: `{ "email": "user@deepaudit.ai", "password": "password123" }`
+  - **Body**: `{ "email": "user@deepaudit.ai", "password": "<DEMO_PASSWORD>" }`
   - **Response**: User object with JWT token and role (`MAKER`, `CHECKER`, `ADMIN`, `AUDITOR`).
 - **`GET /api/auth/passkey-challenge`**
   - **Response**: WebAuthn 32-byte challenge for TouchID/FaceID.

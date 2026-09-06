@@ -37,10 +37,10 @@ export class TranslationService {
   /** Return quick-suggestion strings for the current language. */
   getSuggestions(): string[] {
     return [
-      this.t('suggestion.coimbatore_revenue'),
-      this.t('suggestion.routing_opportunities'),
-      this.t('suggestion.upi_vs_card'),
       this.t('suggestion.how_is_business'),
+      this.t('suggestion.yesterday_revenue'),
+      this.t('suggestion.coimbatore_revenue'),
+      this.t('suggestion.upi_vs_card'),
       this.t('suggestion.best_region'),
       this.t('suggestion.try_discount'),
     ];

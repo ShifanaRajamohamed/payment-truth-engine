@@ -39,6 +39,63 @@ import { NewsIntelligenceFeedComponent } from '../news/news-intelligence-feed.co
           </button>
         </div>
       </div>
+<!-- ── Capability Cards ─────────────────────────────────────────────── -->
+      <section class="space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+              <span>Capabilities</span>
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">Deterministic tools to keep money safe</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-1 gap-4">
+          <!-- Payment Truth Capability Card -->
+          <div
+            (click)="openPaymentTruth()"
+            (keydown.enter)="openPaymentTruth()"
+            (keydown.space)="$event.preventDefault(); openPaymentTruth()"
+            role="button"
+            tabindex="0"
+            [attr.aria-label]="'Payment Truth — One true timeline for any payment'"
+            class="group bg-white rounded-2xl border border-slate-200/80 shadow-[0_2px_8px_rgba(15,31,69,0.05)] p-6 cursor-pointer transition-all duration-200 hover:shadow-[0_12px_28px_rgba(15,31,69,0.1)] hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/70 focus-visible:ring-offset-2">
+
+            <div class="flex items-start gap-4">
+              <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 text-emerald-600 bg-emerald-50 border border-emerald-100 group-hover:scale-105 transition-transform">
+                <!-- Receipt Check (monoline) -->
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" />
+                  <path d="m9 12 2 2 4-4" />
+                </svg>
+              </div>
+
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between gap-3">
+                  <div>
+                    <h3 class="text-base font-bold text-slate-900 tracking-tight">Payment Truth</h3>
+                    <p class="text-xs font-medium text-slate-500 mt-0.5">Autonomous ledger &amp; state reconciliation</p>
+                  </div>
+                  <span class="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                    Open
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/>
+                    </svg>
+                  </span>
+                </div>
+                <p class="text-sm text-slate-600 mt-2 leading-relaxed">
+                  Reconcile conflicting records across Bank, Gateway, and Merchant DB. Cryptographically verify and auto-repair dropped webhook states.
+                </p>
+                <div class="mt-3.5 flex flex-wrap gap-1.5">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-50 text-slate-600 border border-slate-200/80">Timeline Sync</span>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-50 text-slate-600 border border-slate-200/80">Drift Detection</span>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60">Deterministic Gate</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <!-- ── Main 2-Column Structured Layout (Smart Bank / Stripe style) ── -->
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -410,6 +467,10 @@ export class HomeComponent {
 
   openVoice() {
     this.voice.setDrawerOpen(true);
+  }
+
+  openPaymentTruth() {
+    this.router.navigate(['/app/payment-truth']);
   }
 
   openAction(type: 'fund' | 'limits' | 'transfer') {

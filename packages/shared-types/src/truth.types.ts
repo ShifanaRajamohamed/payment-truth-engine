@@ -88,11 +88,39 @@ export interface VerificationCheck {
   details: string;
   checkedAt: string;
   critical: boolean;
+  observedValue?: any;
+  expectedValue?: any;
+  sourceReference?: string;
+}
+
+export type ReconciliationStatus = 'VERIFIED' | 'RECONCILIATION_REQUIRED' | 'MANUAL_REVIEW' | 'BLOCKED';
+
+export type RuleEvaluationStatus = 'PASS' | 'FAIL' | 'INCONCLUSIVE';
+
+export interface AuditableRuleResult {
+  ruleId: string;
+  ruleName: string;
+  category: 'IDENTITY' | 'GATEWAY' | 'MERCHANT_DB' | 'BANK' | 'AMOUNT' | 'CURRENCY' | 'WEBHOOK' | 'DUPLICATE' | 'COMPLETENESS' | 'RISK';
+  status: RuleEvaluationStatus;
+  critical: boolean;
+  observedValue?: any;
+  expectedValue?: any;
+  explanation: string;
+  sourceReference?: string;
+  checkedAt: string;
 }
 
 export interface DeterministicVerificationResult {
   isVerified: boolean;
   canSafeRepair: boolean;
+  /**
+   * Ephemeral audit correlation & trace run identifier (e.g. TRC_RUN_...).
+   * Note: This is an observability trace identifier, not a security authorization token.
+   */
+  verificationTraceId: string;
+  /**
+   * @deprecated Aliased to verificationTraceId for backward compatibility.
+   */
   verificationToken?: string;
   checks: VerificationCheck[];
   rejectionReason?: string;
@@ -104,6 +132,8 @@ export interface DeterministicVerificationResult {
     from: string;
     to: string;
   };
+  reconciliationStatus?: ReconciliationStatus;
+  ruleResults?: AuditableRuleResult[];
 }
 
 export interface AIRootCauseAnalysis {
@@ -119,6 +149,25 @@ export interface AIRootCauseAnalysis {
     english: string;
     tanglish: string;
     hindi: string;
+  };
+}
+
+export type AIInvestigationStatus = 'SUCCESS' | 'UNAVAILABLE' | 'FALLBACK' | 'VALIDATION_FAILED';
+
+export interface AIInvestigationReport {
+  aiStatus: AIInvestigationStatus;
+  observed_facts: string[];
+  evidence: string[]; // references supplied rule IDs (e.g. "rule-02-gateway-status")
+  hypothesis: string;
+  confidence: number; // 0.0 to 1.0
+  verdict: string;
+  recommended_action: 'MARK_ORDER_PAID' | 'MARK_ORDER_FAILED' | 'INITIATE_REFUND_WORKFLOW' | 'ESCALATE_MANUAL_REVIEW' | 'SYNC_REFUND_STATUS' | 'WAIT_AND_MONITOR';
+  validationErrors?: string[];
+  voiceScript?: {
+    tamil?: string;
+    english?: string;
+    tanglish?: string;
+    hindi?: string;
   };
 }
 
@@ -139,6 +188,7 @@ export interface PaymentIncident {
   timeline: TimelineEvent[];
   graphNodes: SystemGraphNode[];
   aiAnalysis?: AIRootCauseAnalysis;
+  aiInvestigation?: AIInvestigationReport;
   verification?: DeterministicVerificationResult;
   isRepaired: boolean;
   repairedAt?: string;

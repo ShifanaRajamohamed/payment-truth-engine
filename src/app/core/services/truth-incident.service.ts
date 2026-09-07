@@ -168,6 +168,19 @@ export class TruthIncidentService {
     }
   }
 
+  async resetStore(): Promise<void> {
+    try {
+      await firstValueFrom(this.http.post(`${this.apiUrl}/truth/reset`, {}));
+      await this.loadIncidents();
+    } catch (err) {
+      console.error('Failed to reset store:', err);
+      throw err;
+    }
+  }
+
+
+  }
+
   async investigate(params: {
     complaintText: string;
     orderId?: string;

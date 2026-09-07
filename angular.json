@@ -29,7 +29,8 @@
             "styles": [
               "apps/web/src/styles.css"
             ],
-            "scripts": []
+            "scripts": [],
+      
           },
           "configurations": {
             "production": {

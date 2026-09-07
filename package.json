@@ -19,6 +19,7 @@
     "build:web": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
+    "test:backend": "node --test apps/api/test/*.test.js",
     "check": "npm run build:all && npm test -- --watch=false --browsers=ChromeHeadless"
   },
   "overrides": {

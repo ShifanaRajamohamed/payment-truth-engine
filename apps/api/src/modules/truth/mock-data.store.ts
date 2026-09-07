@@ -32,6 +32,13 @@ export class MockDataStore {
     return this.auditLogs;
   }
 
+  public resetStore(): void {
+    // Clear all stored incidents and audit logs, then reseed initial incidents
+    this.incidents.clear();
+    this.auditLogs = [];
+    this.seedInitialIncidents();
+  }
+
   public lookupCrossSystem(query: string): {
     found: boolean;
     order?: any;

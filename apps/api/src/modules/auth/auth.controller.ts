@@ -3,6 +3,7 @@ import { ApiResponse } from '../../common/utils/api-response';
 import crypto from 'crypto';
 import { createAuthToken } from '../../common/utils/auth-token';
 import { envConfig } from '../../config/env.config';
+import { roleFromDemoEmail } from '../../common/auth/permissions';
 
 export class AuthController {
   login = (req: Request, res: Response) => {
@@ -15,17 +16,18 @@ export class AuthController {
     }
 
     const name = email.split('@')[0].split('.').map((p: string) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+    const role = roleFromDemoEmail(email);
     const user = {
       id: 'usr_corp_maker_01',
       name: name || 'Aditya Sharma',
       email,
-      role: 'MAKER',
+      role,
       orgId: 'org_acme_corp',
       token: createAuthToken({
         id: 'usr_corp_maker_01',
         name: name || 'Aditya Sharma',
         email,
-        role: 'MAKER',
+        role,
         orgId: 'org_acme_corp'
       })
     };

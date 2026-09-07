@@ -314,6 +314,20 @@ import { PaymentIncident, DeterministicVerificationResult } from '@deepaudit/sha
                 ALL INVARIANTS PASSED ✅
               </span>
             </div>
+<div class="mt-2 space-y-1 text-sm">
+  <div *ngIf="incident()?.verification?.reconciliationStatus as status" class="flex items-center gap-2">
+    <span class="font-bold text-slate-300">Reconciliation:</span>
+    <span [ngClass]="{'text-emerald-400': status === 'VERIFIED', 'text-amber-400': status === 'RECONCILIATION_REQUIRED', 'text-rose-400': status === 'BLOCKED', 'text-slate-400': status === 'MANUAL_REVIEW'}">
+      {{ status }}
+    </span>
+  </div>
+  <div *ngIf="incident()?.verification?.rejectionReason" class="text-rose-400 text-xs">
+    Reason: {{ incident()?.verification?.rejectionReason }}
+  </div>
+  <div *ngIf="incident()?.verification?.canSafeRepair === false && incident()?.verification?.reconciliationStatus === 'BLOCKED'" class="text-rose-500 font-semibold mt-1">
+    Repair blocked by deterministic safety rules.
+  </div>
+</div>
 
             <!-- Verification Checklist Items -->
             <div class="space-y-2">
@@ -335,6 +349,17 @@ import { PaymentIncident, DeterministicVerificationResult } from '@deepaudit/sha
               </div>
             </div>
 
+            <!-- Rule Results -->
+            <div *ngIf="incident()?.verification?.ruleResults as rules" class="space-y-2 pt-2 border-t border-slate-800">
+              <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Rule Evaluation Results</span>
+              <div *ngFor="let res of rules" class="flex items-center justify-between text-xs">
+                <span class="text-slate-300">{{ res.ruleName }}</span>
+                <span [ngClass]="{'text-emerald-400': res.status === 'PASS', 'text-rose-400': res.status === 'FAIL', 'text-slate-500': res.status === 'INCONCLUSIVE'}">
+                  {{ res.status }}
+                </span>
+              </div>
+            </div>
+
             <!-- Safe State Repair Action Box -->
             <div class="p-4 rounded-xl border space-y-3"
                  [ngClass]="incident()?.verification?.canSafeRepair ? 'bg-indigo-950/30 border-indigo-500/40' : 'bg-slate-950/60 border-slate-800'">
@@ -343,8 +368,8 @@ import { PaymentIncident, DeterministicVerificationResult } from '@deepaudit/sha
                   <span class="text-xs font-bold text-indigo-300 uppercase tracking-wider block">Recommended Safe Action</span>
                   <span class="text-sm font-black text-white">{{ incident()?.verification?.repairActionType || 'ESCALATE_MANUAL_REVIEW' }}</span>
                 </div>
-                <span *ngIf="incident()?.verification?.verificationToken" class="text-[10px] font-mono text-emerald-400 bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-500/30">
-                  Token: {{ incident()?.verification?.verificationToken?.slice(0, 18) }}...
+                <span *ngIf="incident()?.verification?.verificationTraceId" class="text-[10px] font-mono text-emerald-400 bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-500/30">
+                  Trace ID: {{ incident()?.verification?.verificationTraceId?.slice(0, 18) }}...
                 </span>
               </div>
 

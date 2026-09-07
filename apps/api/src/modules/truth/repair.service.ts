@@ -5,10 +5,12 @@ import { deterministicVerificationService } from './verification.service';
 export class SafeStateRepairService {
   /**
    * Performs an authorized safe state repair.
-   * Requires deterministic verification token and explicit operator authorization.
+   * Authorization boundary: Role-Based Access Control (RBAC) + Explicit Operator Attribution + Fresh Inline Deterministic Verification.
+   * verificationTraceId is recorded for audit correlation and trace observability, NOT as an authorization token.
    */
   public repairState(params: {
     incidentId: string;
+    verificationTraceId?: string;
     verificationToken?: string;
     operatorName?: string;
     operatorRole?: string;
@@ -30,7 +32,7 @@ export class SafeStateRepairService {
       };
     }
 
-    // Re-verify deterministic criteria
+    // Fresh inline deterministic verification: authoritative safety boundary
     const verification = deterministicVerificationService.verifyIncident(incident);
     if (!verification.canSafeRepair) {
       throw new Error(`Cannot execute state repair: ${verification.rejectionReason || 'Deterministic verification failed'}`);
@@ -38,6 +40,7 @@ export class SafeStateRepairService {
 
     const previousState = { ...incident.truthMatrix.merchantDb };
     const now = new Date();
+    const activeTraceId = params.verificationTraceId || params.verificationToken || verification.verificationTraceId;
 
     // Execute state update according to repair action type
     if (verification.repairActionType === 'MARK_ORDER_PAID') {
@@ -59,10 +62,11 @@ export class SafeStateRepairService {
         source: 'SAFE_REPAIR',
         eventType: 'state.repaired',
         title: 'Order Status Synchronized to PAID',
-        description: `Deterministic state repair executed by ${params.operatorName || 'System Admin'} after verification ${verification.verificationToken}`,
+        description: `Deterministic state repair executed by ${params.operatorName || 'System Admin'} under trace ${activeTraceId}`,
         status: 'SUCCESS',
         metadata: {
-          token: verification.verificationToken,
+          traceId: activeTraceId,
+          token: activeTraceId,
           previousStatus: previousState.orderStatus,
           newStatus: 'PAID',
         },

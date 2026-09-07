@@ -1,14 +1,17 @@
 import crypto from 'crypto';
+import { UserRole } from '@deepaudit/shared-types';
 import { envConfig } from '../../config/env.config';
 
 export interface AuthTokenPayload {
   id: string;
   name: string;
   email: string;
-  role: string;
+  role: UserRole;
   orgId: string;
   exp: number;
 }
+
+const validRoles: readonly UserRole[] = ['MAKER', 'CHECKER', 'ADMIN', 'AUDITOR'];
 
 function encode(value: object): string {
   return Buffer.from(JSON.stringify(value)).toString('base64url');
@@ -24,17 +27,28 @@ export function createAuthToken(payload: Omit<AuthTokenPayload, 'exp'>): string 
 }
 
 export function verifyAuthToken(token: string): AuthTokenPayload | null {
-  const [encodedPayload, providedSignature] = token.split('.');
+  const parts = token.split('.');
+  if (parts.length !== 2) return null;
+  const [encodedPayload, providedSignature] = parts;
   if (!encodedPayload || !providedSignature) return null;
 
-  const expectedSignature = signatureFor(encodedPayload);
-  const provided = Buffer.from(providedSignature);
-  const expected = Buffer.from(expectedSignature);
-  if (provided.length !== expected.length || !crypto.timingSafeEqual(provided, expected)) return null;
-
   try {
-    const payload = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString()) as AuthTokenPayload;
-    return payload.exp > Math.floor(Date.now() / 1000) ? payload : null;
+    const expectedSignature = signatureFor(encodedPayload);
+    const provided = Buffer.from(providedSignature, 'base64url');
+    const expected = Buffer.from(expectedSignature, 'base64url');
+    if (provided.length !== expected.length || !crypto.timingSafeEqual(provided, expected)) return null;
+
+    const payload = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString()) as Partial<AuthTokenPayload>;
+    if (
+      typeof payload.id !== 'string' || !payload.id ||
+      typeof payload.name !== 'string' || !payload.name ||
+      typeof payload.email !== 'string' || !payload.email ||
+      typeof payload.orgId !== 'string' || !payload.orgId ||
+      typeof payload.exp !== 'number' || !Number.isInteger(payload.exp) ||
+      !validRoles.includes(payload.role as UserRole)
+    ) return null;
+
+    return payload.exp > Math.floor(Date.now() / 1000) ? payload as AuthTokenPayload : null;
   } catch {
     return null;
   }

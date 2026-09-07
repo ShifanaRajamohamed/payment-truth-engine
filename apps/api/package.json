@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/main.js",
-    "dev": "ts-node src/main.ts"
+    "dev": "ts-node src/main.ts",
+    "test": "node --test test/*.test.js"
   },
   "dependencies": {
     "@deepaudit/shared-types": "*",

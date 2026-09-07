@@ -65,9 +65,10 @@ export class TruthController {
   public repair = async (req: Request, res: Response): Promise<void> => {
     try {
       const id = req.params.id as string;
-      const { verificationToken, operatorName, operatorRole } = req.body;
+      const { verificationTraceId, verificationToken, operatorName, operatorRole } = req.body;
       const result = safeStateRepairService.repairState({
         incidentId: id,
+        verificationTraceId: verificationTraceId || verificationToken,
         verificationToken,
         operatorName,
         operatorRole,
@@ -131,6 +132,15 @@ export class TruthController {
       const incidentId = req.query.incidentId as string | undefined;
       const logs = mockDataStore.getAuditLogs(incidentId);
       res.json(logs);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  };
+
+  public resetStore = async (req: Request, res: Response): Promise<void> => {
+    try {
+      mockDataStore.resetStore();
+      res.json({ status: 'store reset' });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
